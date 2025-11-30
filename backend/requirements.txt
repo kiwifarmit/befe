@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+alembic
+asyncpg
+fastapi-users[sqlalchemy]
+fastapi-users-db-sqlalchemy
+python-multipart
+email-validator
+httpx
+pytest
+pytest-asyncio
+pytest-cov
+aiosmtplib
+

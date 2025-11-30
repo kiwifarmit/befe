@@ -1,0 +1,18 @@
+services:
+  backend:
+    # In prod, we might want to copy code instead of volume mount, 
+    # but for simplicity we keep the build context.
+    # We override the command to disable reload.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # Remove volume mount for code if we want immutable images, 
+    # but user asked for "mounted volumes even in staging/production".
+    # So we keep volumes.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:80"
+    # No volume mount for code in prod frontend (it's compiled)
+    volumes: []
