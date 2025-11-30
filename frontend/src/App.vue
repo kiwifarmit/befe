@@ -10,10 +10,19 @@ const currentUser = ref(null);
 const userIsAdmin = ref(false);
 
 const checkAuth = async () => {
-  isLoggedIn.value = isAuthenticated();
-  if (isLoggedIn.value) {
-    currentUser.value = await getCurrentUser();
-    userIsAdmin.value = await isAdmin();
+  const authenticated = isAuthenticated();
+  isLoggedIn.value = authenticated;
+  
+  if (authenticated) {
+    try {
+      currentUser.value = await getCurrentUser();
+      // Only set admin status if we have a valid user
+      userIsAdmin.value = currentUser.value ? await isAdmin() : false;
+    } catch (error) {
+      // If there's an error getting user, reset everything
+      currentUser.value = null;
+      userIsAdmin.value = false;
+    }
   } else {
     currentUser.value = null;
     userIsAdmin.value = false;
@@ -87,7 +96,7 @@ const isActiveRoute = (path) => {
           Sum
         </router-link>
         <router-link 
-          v-if="userIsAdmin"
+          v-if="isLoggedIn && userIsAdmin"
           to="/admin/users"
           :class="[
             'px-4 py-2 text-sm font-medium transition-colors',

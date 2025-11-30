@@ -44,8 +44,9 @@ async def log_api_calls(request: Request, call_next):
     # Process request
     response = await call_next(request)
     
-    # Log only API calls
-    if request.url.path.startswith("/api"):
+    # Log all API endpoints (exclude static files and docs)
+    path = request.url.path
+    if not (path.startswith("/docs") or path.startswith("/openapi.json") or path.startswith("/redoc") or path.startswith("/static")):
         api_logger = logging.getLogger("api_logger")
         
         user_id = "anonymous"
@@ -78,7 +79,7 @@ async def log_api_calls(request: Request, call_next):
                     # If we can't even decode the token structure, it's completely invalid
                     user_id = "invalid_token"
         
-        api_logger.info(f"Path: {request.url.path} | Method: {request.method} | Status: {response.status_code} | User: {user_id}")
+        api_logger.info(f"Path: {path} | Method: {request.method} | Status: {response.status_code} | User: {user_id}")
         
     return response
 
