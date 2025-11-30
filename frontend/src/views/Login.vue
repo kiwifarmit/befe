@@ -12,7 +12,7 @@ const login = async () => {
   try {
     error.value = '';
     await authLogin(email.value, password.value);
-    router.push('/');
+    router.push('/profile');
   } catch (e) {
     error.value = e.message || 'Invalid credentials';
   }

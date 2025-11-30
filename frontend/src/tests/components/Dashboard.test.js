@@ -395,5 +395,171 @@ describe('Dashboard.vue', () => {
     expect(wrapper.text()).toContain('Result: 50')
     expect(wrapper.text()).toContain('20 + 30 = 50')
   })
+
+  it('handles non-JSON error response', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    auth.authenticatedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ credits: 10 }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('Not JSON')),
+      })
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toContain('Internal Server Error')
+  })
+
+  it('handles array detail errors', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    auth.authenticatedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ credits: 10 }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({
+          detail: [
+            { msg: 'Validation error 1', loc: ['body', 'a'] },
+            { msg: 'Validation error 2', loc: ['body', 'b'] },
+          ],
+        }),
+      })
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toContain('Validation error')
+  })
+
+  it('handles string detail error', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    auth.authenticatedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ credits: 10 }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({
+          detail: 'Invalid input values',
+        }),
+      })
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toBe('Invalid input values')
+  })
+
+  it('handles object detail error', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    auth.authenticatedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ credits: 10 }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({
+          detail: { error: 'Custom error', code: 'ERR001' },
+        }),
+      })
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toContain('error')
+  })
+
+  it('handles network error with Failed to fetch message', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    auth.authenticatedFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ credits: 10 }),
+      })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toContain('Cannot connect to server')
+  })
+
+  it('handles fetchUserInfo error gracefully', async () => {
+    auth.isAuthenticated.mockReturnValue(true)
+    // First call is for fetchUserInfo, second would be for calculateSum if called
+    auth.authenticatedFetch.mockRejectedValueOnce(new Error('Network error'))
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    // Should not crash, credits should remain null
+    // The error is caught and logged, but doesn't affect the component
+    expect(wrapper.vm.credits).toBeNull()
+  })
+
+  it('handles non-authenticated state', async () => {
+    auth.isAuthenticated.mockReturnValue(false)
+    auth.authenticatedFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ credits: 10 }),
+    })
+    
+    const pushSpy = vi.spyOn(router, 'push')
+    
+    wrapper = await mountDashboard()
+    await wrapper.vm.$nextTick()
+    
+    await wrapper.find('#input-a').setValue(10)
+    await wrapper.find('#input-b').setValue(20)
+    await wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    
+    expect(wrapper.vm.error).toContain('Session expired')
+    
+    // Fast-forward timers to trigger router push
+    vi.advanceTimersByTime(2000)
+    await wrapper.vm.$nextTick()
+    
+    // Verify router.push was called with /login
+    expect(pushSpy).toHaveBeenCalledWith('/login')
+  })
 })
 

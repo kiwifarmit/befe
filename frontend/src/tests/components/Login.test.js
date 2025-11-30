@@ -18,7 +18,8 @@ const createTestRouter = () => {
   return createRouter({
     history: createWebHistory(),
     routes: [
-      { path: '/', component: { template: '<div>Dashboard</div>' } },
+      { path: '/', redirect: '/profile' },
+      { path: '/profile', component: { template: '<div>Profile</div>' } },
       { path: '/login', component: Login },
       { path: '/forgot-password', component: { template: '<div>Forgot Password</div>' } },
     ],
@@ -95,7 +96,7 @@ describe('Login.vue', () => {
     // Router navigation happens asynchronously
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    expect(router.currentRoute.value.path).toBe('/')
+    expect(router.currentRoute.value.path).toBe('/profile')
   })
 
   it('should display error message on login failure', async () => {

@@ -5,7 +5,7 @@ from fastapi_users import schemas
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy import Integer, Column, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from pydantic import model_validator
+from pydantic import model_validator, BaseModel
 
 class Base(DeclarativeBase):
     pass
@@ -58,3 +58,11 @@ class UserCreate(schemas.BaseUserCreate):
 
 class UserUpdate(schemas.BaseUserUpdate):
     pass
+
+class PasswordUpdate(BaseModel):
+    """Schema for password-only updates (profile page)."""
+    password: str
+
+class AdminUserUpdate(schemas.BaseUserUpdate):
+    """Schema for admin user updates, including credits."""
+    credits: Optional[int] = None

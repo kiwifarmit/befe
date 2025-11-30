@@ -1,15 +1,18 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, HTTPException, status, Query
 from contextlib import asynccontextmanager
 from app.db import init_db, get_async_session
-from app.auth import auth_backend, fastapi_users, SECRET, current_active_user, get_user_db
-from app.models import UserRead, UserCreate, UserUpdate, User, UserCredits
+from app.auth import auth_backend, fastapi_users, SECRET, current_active_user, current_superuser, get_user_db, get_user_manager
+from app.models import UserRead, UserCreate, UserUpdate, User, UserCredits, PasswordUpdate, AdminUserUpdate
 from app.logging_config import setup_logging
 from app.api import endpoints
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import object_session
+from typing import List
 import logging
 import jwt
+import math
+import uuid
 
 # Setup logging
 setup_logging()
@@ -140,6 +143,216 @@ async def get_current_user_with_credits(
         "is_verified": user.is_verified,
         "credits": credits_value
     })
+
+# Custom PATCH /users/me endpoint that only allows password updates
+@app.patch("/users/me", response_model=UserRead, tags=["users"])
+async def update_current_user_password(
+    password_update: PasswordUpdate,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+    user_manager = Depends(get_user_manager)
+):
+    """Update current user's password only. Email updates are not allowed."""
+    # Update password using UserManager
+    updated_user = await user_manager.update(
+        UserUpdate(password=password_update.password),
+        user,
+        safe=True  # Safe mode prevents updating email, is_superuser, etc.
+    )
+    
+    # Load credits
+    result = await session.execute(
+        select(UserCredits).where(UserCredits.user_id == updated_user.id)
+    )
+    user_credits = result.scalar_one_or_none()
+    
+    if user_credits is None:
+        user_credits = UserCredits(user_id=updated_user.id, credits=10)
+        session.add(user_credits)
+        await session.flush()
+        await session.refresh(user_credits)
+    
+    credits_value = user_credits.credits if user_credits else 0
+    
+    return UserRead.model_validate({
+        "id": updated_user.id,
+        "email": updated_user.email,
+        "is_active": updated_user.is_active,
+        "is_superuser": updated_user.is_superuser,
+        "is_verified": updated_user.is_verified,
+        "credits": credits_value
+    })
+
+# Admin-only endpoints for user management
+@app.get("/users", response_model=dict, tags=["users"])
+async def list_users(
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(50, ge=1, le=100, description="Page size"),
+    admin_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """List all users with pagination. Admin only."""
+    # Calculate offset
+    offset = (page - 1) * size
+    
+    # Get total count
+    count_result = await session.execute(select(func.count(User.id)))
+    total = count_result.scalar()
+    
+    # Get users with pagination (ordered by email for consistent results)
+    users_result = await session.execute(
+        select(User).order_by(User.email).offset(offset).limit(size)
+    )
+    users = users_result.scalars().all()
+    
+    # Load credits for each user
+    user_list = []
+    for user in users:
+        credits_result = await session.execute(
+            select(UserCredits).where(UserCredits.user_id == user.id)
+        )
+        user_credits = credits_result.scalar_one_or_none()
+        credits_value = user_credits.credits if user_credits else 0
+        
+        user_list.append(UserRead.model_validate({
+            "id": user.id,
+            "email": user.email,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
+            "is_verified": user.is_verified,
+            "credits": credits_value
+        }))
+    
+    # Calculate total pages
+    total_pages = math.ceil(total / size) if total > 0 else 0
+    
+    return {
+        "items": user_list,
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": total_pages
+    }
+
+@app.get("/users/{user_id}", response_model=UserRead, tags=["users"])
+async def get_user_by_id(
+    user_id: uuid.UUID,
+    admin_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Get user by ID with credits. Admin only."""
+    # Get user
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    # Load credits
+    credits_result = await session.execute(
+        select(UserCredits).where(UserCredits.user_id == user.id)
+    )
+    user_credits = credits_result.scalar_one_or_none()
+    credits_value = user_credits.credits if user_credits else 0
+    
+    return UserRead.model_validate({
+        "id": user.id,
+        "email": user.email,
+        "is_active": user.is_active,
+        "is_superuser": user.is_superuser,
+        "is_verified": user.is_verified,
+        "credits": credits_value
+    })
+
+@app.patch("/users/{user_id}", response_model=UserRead, tags=["users"])
+async def update_user_by_id(
+    user_id: uuid.UUID,
+    user_update: AdminUserUpdate,
+    admin_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    user_manager = Depends(get_user_manager)
+):
+    """Update user by ID, including credits. Admin only."""
+    # Get user
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    # Update user fields (email, password, is_active, is_superuser)
+    update_dict = user_update.model_dump(exclude_unset=True, exclude={"credits"})
+    if update_dict:
+        updated_user = await user_manager.update(
+            UserUpdate(**update_dict),
+            user,
+            safe=False  # Admin can update all fields
+        )
+    else:
+        updated_user = user
+    
+    # Update credits if provided
+    if user_update.credits is not None:
+        credits_result = await session.execute(
+            select(UserCredits).where(UserCredits.user_id == user_id)
+        )
+        user_credits = credits_result.scalar_one_or_none()
+        
+        if user_credits is None:
+            user_credits = UserCredits(user_id=user_id, credits=user_update.credits)
+            session.add(user_credits)
+        else:
+            user_credits.credits = user_update.credits
+            session.add(user_credits)
+        
+        await session.commit()
+        await session.refresh(user_credits)
+        credits_value = user_credits.credits
+    else:
+        # Load existing credits
+        credits_result = await session.execute(
+            select(UserCredits).where(UserCredits.user_id == user_id)
+        )
+        user_credits = credits_result.scalar_one_or_none()
+        credits_value = user_credits.credits if user_credits else 0
+    
+    return UserRead.model_validate({
+        "id": updated_user.id,
+        "email": updated_user.email,
+        "is_active": updated_user.is_active,
+        "is_superuser": updated_user.is_superuser,
+        "is_verified": updated_user.is_verified,
+        "credits": credits_value
+    })
+
+@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["users"])
+async def delete_user_by_id(
+    user_id: uuid.UUID,
+    admin_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session),
+    user_manager = Depends(get_user_manager)
+):
+    """Delete user by ID, including UserCredits. Admin only."""
+    # Get user
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    # Delete UserCredits first (if exists)
+    credits_result = await session.execute(
+        select(UserCredits).where(UserCredits.user_id == user_id)
+    )
+    user_credits = credits_result.scalar_one_or_none()
+    if user_credits:
+        await session.delete(user_credits)
+        await session.flush()
+    
+    # Delete user (this will be handled by UserManager)
+    await user_manager.delete(user)
+    
+    return None
 
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),

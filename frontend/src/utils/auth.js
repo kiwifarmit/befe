@@ -99,8 +99,21 @@ export async function login(email, password) {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
-    throw new Error(errorData.detail || 'Login failed');
+    let errorMessage = 'Login failed';
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } else {
+        // If response is not JSON (e.g., HTML error page), get text
+        const text = await response.text();
+        errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
+      }
+    } catch (e) {
+      errorMessage = `Server error (${response.status}): ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
@@ -176,6 +189,53 @@ export async function authenticatedFetch(url, options = {}) {
  */
 export function logout() {
   removeToken();
+  // Clear cached user data
+  if (typeof window !== 'undefined') {
+    window._cachedUser = null;
+  }
+}
+
+// Cache for current user data
+let cachedUser = null;
+
+/**
+ * Get current user data from API
+ * @returns {Promise<object|null>} User object or null if not authenticated
+ */
+export async function getCurrentUser() {
+  // Return cached user if available and token is still valid
+  if (cachedUser && isAuthenticated()) {
+    return cachedUser;
+  }
+  
+  if (!isAuthenticated()) {
+    cachedUser = null;
+    return null;
+  }
+  
+  try {
+    const response = await authenticatedFetch('/users/me');
+    if (response.ok) {
+      const user = await response.json();
+      cachedUser = user;
+      return user;
+    } else {
+      cachedUser = null;
+      return null;
+    }
+  } catch (e) {
+    cachedUser = null;
+    return null;
+  }
+}
+
+/**
+ * Check if current user is admin (superuser)
+ * @returns {Promise<boolean>} True if user is admin
+ */
+export async function isAdmin() {
+  const user = await getCurrentUser();
+  return user ? user.is_superuser === true : false;
 }
 
 
