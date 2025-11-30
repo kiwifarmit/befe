@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:20-slim
 
 # Install dependencies for healthchecks or other tools if needed
 # RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*

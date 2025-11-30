@@ -43,6 +43,38 @@ Since public registration is disabled, you must create the first user via CLI.
 
 ## Database Management
 
+### Dump Database to File
+To create a SQL dump of the PostgreSQL database:
+
+**Basic command** (uses environment variables from docker-compose):
+```bash
+docker compose exec db pg_dump -U postgres app_db > dump_$(date +%Y%m%d_%H%M%S).sql
+```
+
+**With custom filename**:
+```bash
+docker compose exec db pg_dump -U postgres app_db > database_backup.sql
+```
+
+**Note**: Replace `postgres` and `app_db` with your actual `POSTGRES_USER` and `POSTGRES_DB` values from your `.env` file if they differ. To check your database name:
+```bash
+docker compose exec db psql -U postgres -l
+```
+
+### Restore Database from Dump
+To restore a database from a SQL dump file:
+
+```bash
+docker compose exec -T db psql -U postgres app_db < database_backup.sql
+```
+
+Or using pipe:
+```bash
+cat database_backup.sql | docker compose exec -T db psql -U postgres app_db
+```
+
+**Note**: The `-T` flag is required to prevent `docker compose exec` from allocating a TTY, which is necessary when piping data.
+
 ### Reset Database (Start from Scratch)
 If you need to completely reset the database and start fresh:
 
