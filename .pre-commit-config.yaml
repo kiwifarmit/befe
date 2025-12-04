@@ -56,6 +56,19 @@ repos:
         files: ^backend/.*\.py$
         args: ["--min-confidence", "80", "backend/app"]
 
+  # Check that critical endpoints are not removed
+  # IMPORTANT: This must run BEFORE autoflake/black to prevent removal
+  - repo: local
+    hooks:
+      - id: check-endpoints
+        name: Check critical endpoints exist
+        entry: bash scripts/check-endpoints.sh
+        language: system
+        files: ^backend/app/api/(endpoints|credits)\.py$
+        pass_filenames: true
+        always_run: false
+        verbose: true
+
   # Remove unused Python imports
   - repo: https://github.com/PyCQA/autoflake
     rev: v2.3.1
@@ -63,6 +76,8 @@ repos:
       - id: autoflake
         files: ^backend/
         args: ["--in-place", "--remove-all-unused-imports", "--recursive", "--remove-unused-variables"]
+        # Exclude endpoints.py from autoflake to prevent accidental removal
+        exclude: ^backend/app/api/endpoints\.py$
 
   # JavaScript/Vue formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -80,3 +95,15 @@ repos:
         language: system
         files: ^frontend/.*\.(js|vue)$
         pass_filenames: true
+
+  # Additional Vue-specific ESLint hook (pre-commit mirror)
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v10.0.0-alpha.1
+    hooks:
+      - id: eslint
+        files: ^frontend/.*\.vue$
+        additional_dependencies:
+          - eslint@^8.57.1
+          - eslint-plugin-vue@^9.33.0
+          - eslint-plugin-unused-imports@^3.2.0
+          - '@vue/eslint-config-prettier@^9.0.0'

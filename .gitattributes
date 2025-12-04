@@ -1,0 +1,2 @@
+# Protect endpoints.py from automatic formatting/cleanup
+backend/app/api/endpoints.py linguist-generated=false

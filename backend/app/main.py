@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api import endpoints
+from app.api import credits, endpoints
 from app.auth import (
     SECRET,
     UserManager,
@@ -277,6 +277,7 @@ app.include_router(
 
 # Business Logic Routes
 app.include_router(endpoints.router, prefix="/api", tags=["logic"])
+app.include_router(credits.router, prefix="/api", tags=["users"])
 
 
 @app.get("/")
