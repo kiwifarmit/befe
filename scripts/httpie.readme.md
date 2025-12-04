@@ -376,4 +376,3 @@ http --session=./session.json POST http://localhost:8000/api/sum \
 # 4. Check credits again
 http --session=./session.json GET http://localhost:8000/users/me
 ```
-

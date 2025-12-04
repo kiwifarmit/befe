@@ -1,7 +1,8 @@
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
-import os
+
 
 def setup_logging():
     log_dir = "/logs/backend"
@@ -22,20 +23,20 @@ def setup_logging():
 
     # General File Handler
     general_handler = RotatingFileHandler(
-        general_log_file, maxBytes=10*1024*1024, backupCount=5
+        general_log_file, maxBytes=10 * 1024 * 1024, backupCount=5
     )
     general_handler.setFormatter(formatter)
-    
+
     # API File Handler
     api_handler = RotatingFileHandler(
-        api_log_file, maxBytes=10*1024*1024, backupCount=5
+        api_log_file, maxBytes=10 * 1024 * 1024, backupCount=5
     )
     api_handler.setFormatter(formatter)
 
     # Console Handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
-    
+
     # Add handlers to root logger (for general logs)
     logger.addHandler(general_handler)
     logger.addHandler(console_handler)
@@ -44,7 +45,7 @@ def setup_logging():
     api_logger = logging.getLogger("api_logger")
     api_logger.setLevel(logging.INFO)
     api_logger.addHandler(api_handler)
-    api_logger.propagate = False # Don't propagate to root logger
+    api_logger.propagate = False  # Don't propagate to root logger
 
     # Uvicorn access logs - redirect to general log or keep separate?
     # User said "backend.log is too verbose", usually due to uvicorn access logs.

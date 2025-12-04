@@ -3,7 +3,7 @@
  * This file runs before all tests
  */
 
-import { vi } from 'vitest'
+import { beforeEach, vi } from "vitest";
 
 // Mock localStorage
 const localStorageMock = {
@@ -11,25 +11,24 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
-}
+};
 
-global.localStorage = localStorageMock
+global.localStorage = localStorageMock;
 
 // Mock window.location
-delete window.location
+delete window.location;
 window.location = {
-  href: '',
+  href: "",
   assign: vi.fn(),
   replace: vi.fn(),
   reload: vi.fn(),
-}
+};
 
 // Reset mocks before each test
 beforeEach(() => {
-  vi.clearAllMocks()
-  localStorageMock.getItem.mockReturnValue(null)
-  localStorageMock.setItem.mockReturnValue(undefined)
-  localStorageMock.removeItem.mockReturnValue(undefined)
-  localStorageMock.clear.mockReturnValue(undefined)
-})
-
+  vi.clearAllMocks();
+  localStorageMock.getItem.mockReturnValue(null);
+  localStorageMock.setItem.mockReturnValue(undefined);
+  localStorageMock.removeItem.mockReturnValue(undefined);
+  localStorageMock.clear.mockReturnValue(undefined);
+});

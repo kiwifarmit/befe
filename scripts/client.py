@@ -57,7 +57,7 @@ async def main():
     # Use 'nginx' hostname when running inside docker network
     client = WebClient(base_url="http://nginx:80")
     # Replace with actual credentials after creating a user
-    await client.login("admin@example.com", "Admin123") 
+    await client.login("admin@example.com", "Admin123")
     await client.get_sum(10, 20)
     await client.close()
 

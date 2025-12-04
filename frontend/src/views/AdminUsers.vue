@@ -1,563 +1,538 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { authenticatedFetch, getCurrentUser, isAdmin } from '../utils/auth';
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { authenticatedFetch, getCurrentUser } from "../utils/auth";
 
 const router = useRouter();
 const users = ref([]);
 const loading = ref(true);
-const error = ref('');
-const currentPage = ref(1);
-const pageSize = ref(50);
-const totalUsers = ref(0);
-const totalPages = ref(0);
-
-// Edit/Create modal state
-const showModal = ref(false);
+const error = ref("");
 const editingUser = ref(null);
-const modalLoading = ref(false);
-const modalError = ref('');
-const modalSuccess = ref('');
+const creatingUser = ref(false);
+const isAdmin = ref(false);
+const editForm = ref({
+  email: "",
+  is_active: false,
+  is_superuser: false,
+  is_verified: false,
+  credits: 0,
+});
+const newUserForm = ref({
+  email: "",
+  password: "",
+  is_active: true,
+  is_superuser: false,
+  is_verified: true,
+  credits: 10,
+});
 
-// Form fields
-const formEmail = ref('');
-const formPassword = ref('');
-const formIsActive = ref(true);
-const formIsSuperuser = ref(false);
-const formCredits = ref(10);
-
-// Delete confirmation
-const showDeleteModal = ref(false);
-const deletingUser = ref(null);
-const deleteLoading = ref(false);
-
-// Check admin access
-const checkAdminAccess = async () => {
-  const admin = await isAdmin();
-  if (!admin) {
-    router.push('/profile');
-  }
-};
-
-// Fetch users list
-const fetchUsers = async (page = 1) => {
+const fetchUsers = async () => {
   try {
     loading.value = true;
-    error.value = '';
-    const response = await authenticatedFetch(`/users?page=${page}&size=${pageSize.value}`);
-    
+    error.value = "";
+    const response = await authenticatedFetch("/users");
+
     if (!response.ok) {
-      if (response.status === 403) {
-        error.value = 'Access denied. Admin privileges required.';
-        router.push('/profile');
-        return;
-      }
-      let errorMessage = 'Failed to fetch users';
+      // Try to parse JSON error, fallback to status text
+      let errorMessage = `Failed to fetch users: ${response.status} ${response.statusText}`;
       try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           const data = await response.json();
-          errorMessage = data.detail || errorMessage;
-        } else {
-          const text = await response.text();
-          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
+          errorMessage = data.detail || data.message || errorMessage;
         }
-      } catch (e) {
-        errorMessage = `Server error (${response.status}): ${response.statusText}`;
+      } catch (parseError) {
+        // Response is not JSON, use status text
       }
       throw new Error(errorMessage);
     }
-    
-    const data = await response.json();
-    users.value = data.items || [];
-    totalUsers.value = data.total || 0;
-    totalPages.value = data.pages || 0;
-    currentPage.value = data.page || 1;
+
+    users.value = await response.json();
   } catch (e) {
-    if (e.message === 'TOKEN_EXPIRED') {
-      router.push('/login');
-    } else {
-      error.value = e.message || 'Failed to fetch users';
-    }
+    error.value = e.message || "Failed to load users";
   } finally {
     loading.value = false;
   }
 };
 
-// Open create modal
-const openCreateModal = () => {
-  editingUser.value = null;
-  formEmail.value = '';
-  formPassword.value = '';
-  formIsActive.value = true;
-  formIsSuperuser.value = false;
-  formCredits.value = 10;
-  modalError.value = '';
-  modalSuccess.value = '';
-  showModal.value = true;
+const startEdit = (user) => {
+  editingUser.value = user.id;
+  editForm.value = {
+    email: user.email,
+    is_active: user.is_active,
+    is_superuser: user.is_superuser,
+    is_verified: user.is_verified,
+    credits: user.credits || 0,
+  };
 };
 
-// Open edit modal
-const openEditModal = (user) => {
-  editingUser.value = user;
-  formEmail.value = user.email;
-  formPassword.value = '';
-  formIsActive.value = user.is_active;
-  formIsSuperuser.value = user.is_superuser;
-  formCredits.value = user.credits;
-  modalError.value = '';
-  modalSuccess.value = '';
-  showModal.value = true;
-};
-
-// Close modal
-const closeModal = () => {
-  showModal.value = false;
+const cancelEdit = () => {
   editingUser.value = null;
 };
 
-// Save user (create or update)
-const saveUser = async () => {
-  modalError.value = '';
-  modalSuccess.value = '';
-  modalLoading.value = true;
-  
+const startCreate = () => {
+  creatingUser.value = true;
+  newUserForm.value = {
+    email: "",
+    password: "",
+    is_active: true,
+    is_superuser: false,
+    is_verified: true,
+    credits: 10,
+  };
+};
+
+const cancelCreate = () => {
+  creatingUser.value = false;
+};
+
+const createUser = async () => {
   try {
-    const updateData = {
-      is_active: formIsActive.value,
-      is_superuser: formIsSuperuser.value,
-      credits: formCredits.value
-    };
-    
-    if (formPassword.value) {
-      updateData.password = formPassword.value;
+    error.value = "";
+
+    // First create the user via register endpoint
+    const response = await authenticatedFetch("/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: newUserForm.value.email,
+        password: newUserForm.value.password,
+      }),
+    });
+
+    if (!response.ok) {
+      // Try to parse JSON error, fallback to status text
+      let errorMessage = `Failed to create user: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          errorMessage = data.detail || data.message || errorMessage;
+        }
+      } catch (parseError) {
+        // Response is not JSON, use status text
+      }
+      throw new Error(errorMessage);
     }
-    
-    if (editingUser.value) {
-      // Update existing user
-      if (formEmail.value !== editingUser.value.email) {
-        updateData.email = formEmail.value;
-      }
-      
-      const response = await authenticatedFetch(`/users/${editingUser.value.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to update user';
-        try {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            errorMessage = data.detail || errorMessage;
-          } else {
-            // If response is not JSON (e.g., HTML error page), get text
-            const text = await response.text();
-            errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
-          }
-        } catch (e) {
-          errorMessage = `Server error (${response.status}): ${response.statusText}`;
-        }
-        modalError.value = errorMessage;
-        return;
-      }
-      
-      modalSuccess.value = 'User updated successfully';
-    } else {
-      // Create new user - use register endpoint
-      const response = await authenticatedFetch('/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formEmail.value,
-          password: formPassword.value || 'TempPass123', // Default password if not provided
-        }),
-      });
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to create user';
-        try {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            errorMessage = data.detail || errorMessage;
-          } else {
-            // If response is not JSON (e.g., HTML error page), get text
-            const text = await response.text();
-            errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
-          }
-        } catch (e) {
-          errorMessage = `Server error (${response.status}): ${response.statusText}`;
-        }
-        modalError.value = errorMessage;
-        return;
-      }
-      
-      const newUser = await response.json();
-      
-      // Update the new user's admin status and credits
-      const updateResponse = await authenticatedFetch(`/users/${newUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          is_active: formIsActive.value,
-          is_superuser: formIsSuperuser.value,
-          credits: formCredits.value
-        }),
-      });
-      
-      if (!updateResponse.ok) {
-        let errorMessage = 'User created but failed to update settings';
-        try {
-          const contentType = updateResponse.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const data = await updateResponse.json();
-            errorMessage = data.detail || errorMessage;
-          } else {
-            const text = await updateResponse.text();
-            errorMessage = `Server error (${updateResponse.status}): ${text.substring(0, 100)}`;
-          }
-        } catch (e) {
-          errorMessage = `Server error (${updateResponse.status}): ${updateResponse.statusText}`;
-        }
-        modalError.value = errorMessage;
-        return;
-      }
-      
-      modalSuccess.value = 'User created successfully';
-    }
-    
-    // Refresh users list
-    await fetchUsers(currentPage.value);
-    
-    // Close modal after a short delay
-    setTimeout(() => {
-      closeModal();
-    }, 1500);
+
+    const newUser = await response.json();
+    const userId = newUser.id;
+
+    // Update user properties (is_active, is_superuser, is_verified)
+    await authenticatedFetch(`/users/${userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        is_active: newUserForm.value.is_active,
+        is_superuser: newUserForm.value.is_superuser,
+        is_verified: newUserForm.value.is_verified,
+      }),
+    });
+
+    // Set credits
+    await updateCredits(userId, newUserForm.value.credits);
+
+    creatingUser.value = false;
+    await fetchUsers();
   } catch (e) {
-    if (e.message === 'TOKEN_EXPIRED') {
-      router.push('/login');
-    } else {
-      modalError.value = e.message || 'Failed to save user';
-    }
-  } finally {
-    modalLoading.value = false;
+    error.value = e.message || "Failed to create user";
   }
 };
 
-// Open delete confirmation
-const openDeleteModal = (user) => {
-  deletingUser.value = user;
-  showDeleteModal.value = true;
-};
-
-// Close delete modal
-const closeDeleteModal = () => {
-  showDeleteModal.value = false;
-  deletingUser.value = null;
-};
-
-// Delete user
-const deleteUser = async () => {
-  if (!deletingUser.value) return;
-  
-  deleteLoading.value = true;
-  modalError.value = '';
-  
+const saveUser = async (userId) => {
   try {
-    const response = await authenticatedFetch(`/users/${deletingUser.value.id}`, {
-      method: 'DELETE',
+    error.value = "";
+    const response = await authenticatedFetch(`/users/${userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: editForm.value.email,
+        is_active: editForm.value.is_active,
+        is_superuser: editForm.value.is_superuser,
+        is_verified: editForm.value.is_verified,
+      }),
     });
-    
-    if (!response.ok && response.status !== 204) {
-      let errorMessage = 'Failed to delete user';
+
+    if (!response.ok) {
+      // Try to parse JSON error, fallback to status text
+      let errorMessage = `Failed to update user: ${response.status} ${response.statusText}`;
       try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
           const data = await response.json();
-          errorMessage = data.detail || errorMessage;
-        } else {
-          const text = await response.text();
-          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
+          errorMessage = data.detail || data.message || errorMessage;
         }
-      } catch (e) {
-        errorMessage = `Server error (${response.status}): ${response.statusText}`;
+      } catch (parseError) {
+        // Response is not JSON, use status text
       }
-      modalError.value = errorMessage;
+      throw new Error(errorMessage);
+    }
+
+    // Update credits separately if changed
+    if (
+      editForm.value.credits !==
+      users.value.find((u) => u.id === userId)?.credits
+    ) {
+      await updateCredits(userId, editForm.value.credits);
+    }
+
+    editingUser.value = null;
+    await fetchUsers();
+  } catch (e) {
+    error.value = e.message || "Failed to update user";
+  }
+};
+
+const updateCredits = async (userId, credits) => {
+  try {
+    const response = await authenticatedFetch(`/api/users/${userId}/credits`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ credits: parseInt(credits) }),
+    });
+
+    if (!response.ok) {
+      // Try to parse JSON error, fallback to status text
+      let errorMessage = `Failed to update credits: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          errorMessage = data.detail || data.message || errorMessage;
+        }
+      } catch (parseError) {
+        // Response is not JSON, use status text
+      }
+      throw new Error(errorMessage);
+    }
+  } catch (e) {
+    throw new Error("Failed to update credits: " + e.message);
+  }
+};
+
+const deleteUser = async (userId) => {
+  if (!confirm("Are you sure you want to delete this user?")) {
+    return;
+  }
+
+  try {
+    error.value = "";
+    const response = await authenticatedFetch(`/users/${userId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      // Try to parse JSON error, fallback to status text
+      let errorMessage = `Failed to delete user: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          errorMessage = data.detail || data.message || errorMessage;
+        }
+      } catch (parseError) {
+        // Response is not JSON, use status text
+      }
+      throw new Error(errorMessage);
+    }
+
+    await fetchUsers();
+  } catch (e) {
+    error.value = e.message || "Failed to delete user";
+  }
+};
+
+const checkAdminStatus = async () => {
+  try {
+    loading.value = true;
+    const user = await getCurrentUser();
+    isAdmin.value = user ? user.is_superuser === true : false;
+
+    // If not admin, show error and don't fetch users
+    if (!isAdmin.value) {
+      error.value = "Access Denied: Only administrators can access this page.";
+      loading.value = false;
+      // Redirect after a short delay to show the message
+      setTimeout(() => {
+        router.push("/profile");
+      }, 2000);
       return;
     }
-    
-    // Refresh users list
-    await fetchUsers(currentPage.value);
-    closeDeleteModal();
+
+    // Only fetch users if admin
+    await fetchUsers();
   } catch (e) {
-    if (e.message === 'TOKEN_EXPIRED') {
-      router.push('/login');
-    } else {
-      modalError.value = e.message || 'Failed to delete user';
-    }
-  } finally {
-    deleteLoading.value = false;
+    error.value =
+      "Failed to verify admin status: " + (e.message || "Unknown error");
+    isAdmin.value = false;
+    loading.value = false;
   }
 };
 
-// Pagination
-const goToPage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    fetchUsers(page);
-  }
-};
-
-const pageNumbers = computed(() => {
-  const pages = [];
-  const maxVisible = 5;
-  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
-  let end = Math.min(totalPages.value, start + maxVisible - 1);
-  
-  if (end - start < maxVisible - 1) {
-    start = Math.max(1, end - maxVisible + 1);
-  }
-  
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-  
-  return pages;
-});
-
-onMounted(async () => {
-  await checkAdminAccess();
-  await fetchUsers();
+onMounted(() => {
+  checkAdminStatus();
 });
 </script>
 
 <template>
-  <div class="bg-white p-8 rounded-lg shadow-md mb-4">
-    <div class="flex justify-between items-center mb-6">
+  <div v-if="isAdmin" class="bg-white p-8 rounded-lg shadow-md mb-4">
+    <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold text-gray-800">User Management</h2>
-      <button 
-        @click="openCreateModal"
-        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded cursor-pointer border-none"
+      <button
+        v-if="isAdmin && !creatingUser"
+        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded cursor-pointer border-none"
+        @click="startCreate"
       >
-        Create User
+        New User
       </button>
     </div>
-    
-    <div v-if="loading" class="text-gray-600">Loading users...</div>
-    
-    <div v-else-if="error" class="text-red-500 mb-4">{{ error }}</div>
-    
-    <div v-else>
-      <!-- Users Table -->
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="user in users" :key="user.id">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.email }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.credits }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="user.is_active" class="text-green-600">Active</span>
-                <span v-else class="text-red-600">Inactive</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="user.is_superuser" class="text-blue-600">Yes</span>
-                <span v-else class="text-gray-500">No</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button 
-                  @click="openEditModal(user)"
-                  class="text-blue-600 hover:text-blue-900 mr-4"
+
+    <div v-if="error" class="text-red-500 mb-4">
+      <strong>Error:</strong> {{ error }}
+    </div>
+
+    <!-- New User Form -->
+    <div
+      v-if="isAdmin && creatingUser"
+      class="mb-6 p-4 border-2 border-blue-300 rounded-lg bg-blue-50"
+    >
+      <h3 class="text-lg font-semibold mb-4 text-gray-800">Create New User</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Email *</label
+          >
+          <input
+            v-model="newUserForm.email"
+            type="email"
+            required
+            class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+            placeholder="user@example.com"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Password *</label
+          >
+          <input
+            v-model="newUserForm.password"
+            type="password"
+            required
+            class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+            placeholder="Password"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Initial Credits</label
+          >
+          <input
+            v-model.number="newUserForm.credits"
+            type="number"
+            min="0"
+            class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          />
+        </div>
+        <div class="space-y-2">
+          <label class="flex items-center text-sm">
+            <input
+              v-model="newUserForm.is_active"
+              type="checkbox"
+              class="mr-2"
+            />
+            Active
+          </label>
+          <label class="flex items-center text-sm">
+            <input
+              v-model="newUserForm.is_verified"
+              type="checkbox"
+              class="mr-2"
+            />
+            Verified
+          </label>
+          <label class="flex items-center text-sm">
+            <input
+              v-model="newUserForm.is_superuser"
+              type="checkbox"
+              class="mr-2"
+            />
+            Superuser
+          </label>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button
+          class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded cursor-pointer border-none"
+          @click="createUser"
+        >
+          Create User
+        </button>
+        <button
+          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded cursor-pointer border-none"
+          @click="cancelCreate"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <div v-if="!isAdmin" class="text-red-500 mb-4">
+      <strong>Access Denied:</strong> Only administrators can access this page.
+    </div>
+
+    <div v-if="isAdmin && loading" class="text-gray-600">Loading users...</div>
+
+    <div v-if="isAdmin && !loading && users.length === 0" class="text-gray-600">
+      No users found.
+    </div>
+
+    <div v-if="!loading && isAdmin && users.length > 0" class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Email
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Credits
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Status
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr v-for="user in users" :key="user.id">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div
+                v-if="editingUser !== user.id"
+                class="text-sm font-medium text-gray-900"
+              >
+                {{ user.email }}
+              </div>
+              <input
+                v-else
+                v-model="editForm.email"
+                type="email"
+                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div
+                v-if="editingUser !== user.id"
+                class="text-sm text-gray-900 font-semibold"
+              >
+                {{ user.credits || 0 }}
+              </div>
+              <input
+                v-else
+                v-model.number="editForm.credits"
+                type="number"
+                min="0"
+                class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              />
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div v-if="editingUser !== user.id" class="text-sm text-gray-900">
+                <span
+                  :class="user.is_active ? 'text-green-600' : 'text-red-600'"
+                  class="font-medium mr-2"
+                >
+                  {{ user.is_active ? "Active" : "Inactive" }}
+                </span>
+                <span
+                  :class="
+                    user.is_verified ? 'text-green-600' : 'text-yellow-600'
+                  "
+                  class="font-medium mr-2"
+                >
+                  {{ user.is_verified ? "Verified" : "Not Verified" }}
+                </span>
+                <span
+                  v-if="user.is_superuser"
+                  class="text-purple-600 font-medium"
+                  >Superuser</span
+                >
+              </div>
+              <div v-else class="space-y-2">
+                <label class="flex items-center text-sm">
+                  <input
+                    v-model="editForm.is_active"
+                    type="checkbox"
+                    class="mr-2"
+                  />
+                  Active
+                </label>
+                <label class="flex items-center text-sm">
+                  <input
+                    v-model="editForm.is_verified"
+                    type="checkbox"
+                    class="mr-2"
+                  />
+                  Verified
+                </label>
+                <label class="flex items-center text-sm">
+                  <input
+                    v-model="editForm.is_superuser"
+                    type="checkbox"
+                    class="mr-2"
+                  />
+                  Superuser
+                </label>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <div v-if="editingUser !== user.id" class="flex gap-2">
+                <button
+                  class="text-blue-600 hover:text-blue-900"
+                  @click="startEdit(user)"
                 >
                   Edit
                 </button>
-                <button 
-                  @click="openDeleteModal(user)"
+                <button
                   class="text-red-600 hover:text-red-900"
+                  @click="deleteUser(user.id)"
                 >
                   Delete
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
-        <div class="text-sm text-gray-700">
-          Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalUsers) }} of {{ totalUsers }} users
-        </div>
-        <div class="flex gap-2">
-          <button 
-            @click="goToPage(currentPage - 1)"
-            :disabled="currentPage === 1"
-            class="px-3 py-2 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <button 
-            v-for="page in pageNumbers"
-            :key="page"
-            @click="goToPage(page)"
-            :class="[
-              'px-3 py-2 border rounded',
-              page === currentPage 
-                ? 'bg-blue-500 text-white border-blue-500' 
-                : 'border-gray-300 hover:bg-gray-50'
-            ]"
-          >
-            {{ page }}
-          </button>
-          <button 
-            @click="goToPage(currentPage + 1)"
-            :disabled="currentPage === totalPages"
-            class="px-3 py-2 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Edit/Create Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-        <h3 class="text-xl font-semibold mb-4">
-          {{ editingUser ? 'Edit User' : 'Create User' }}
-        </h3>
-        
-        <div v-if="modalError" class="text-red-500 mb-4 bg-red-50 p-3 rounded">
-          {{ modalError }}
-        </div>
-        
-        <div v-if="modalSuccess" class="text-green-600 mb-4 bg-green-50 p-3 rounded">
-          {{ modalSuccess }}
-        </div>
-        
-        <form @submit.prevent="saveUser" class="space-y-4">
-          <div>
-            <label class="block mb-2 font-medium text-gray-700">Email</label>
-            <input 
-              v-model="formEmail" 
-              type="email" 
-              required
-              :disabled="!!editingUser"
-              class="w-full p-2 border border-gray-300 rounded disabled:bg-gray-100"
-            />
-          </div>
-          
-          <div>
-            <label class="block mb-2 font-medium text-gray-700">
-              Password {{ editingUser ? '(leave empty to keep current)' : '' }}
-            </label>
-            <input 
-              v-model="formPassword" 
-              type="password" 
-              :required="!editingUser"
-              minlength="8"
-              class="w-full p-2 border border-gray-300 rounded"
-            />
-          </div>
-          
-          <div>
-            <label class="block mb-2 font-medium text-gray-700">Credits</label>
-            <input 
-              v-model.number="formCredits" 
-              type="number" 
-              min="0"
-              required
-              class="w-full p-2 border border-gray-300 rounded"
-            />
-          </div>
-          
-          <div class="flex items-center">
-            <input 
-              v-model="formIsActive" 
-              type="checkbox" 
-              id="is-active"
-              class="mr-2"
-            />
-            <label for="is-active" class="text-gray-700">Active</label>
-          </div>
-          
-          <div class="flex items-center">
-            <input 
-              v-model="formIsSuperuser" 
-              type="checkbox" 
-              id="is-superuser"
-              class="mr-2"
-            />
-            <label for="is-superuser" class="text-gray-700">Admin (Superuser)</label>
-          </div>
-          
-          <div class="flex gap-3 mt-6">
-            <button 
-              type="submit"
-              :disabled="modalLoading"
-              class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-60"
-            >
-              {{ modalLoading ? 'Saving...' : (editingUser ? 'Update' : 'Create') }}
-            </button>
-            <button 
-              type="button"
-              @click="closeModal"
-              class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-    
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-        <h3 class="text-xl font-semibold mb-4 text-red-600">Delete User</h3>
-        
-        <p class="mb-4">
-          Are you sure you want to delete user <strong>{{ deletingUser?.email }}</strong>? 
-          This action cannot be undone.
-        </p>
-        
-        <div v-if="modalError" class="text-red-500 mb-4 bg-red-50 p-3 rounded">
-          {{ modalError }}
-        </div>
-        
-        <div class="flex gap-3">
-          <button 
-            @click="deleteUser"
-            :disabled="deleteLoading"
-            class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded disabled:opacity-60"
-          >
-            {{ deleteLoading ? 'Deleting...' : 'Delete' }}
-          </button>
-          <button 
-            @click="closeDeleteModal"
-            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+              </div>
+              <div v-else class="flex gap-2">
+                <button
+                  class="text-green-600 hover:text-green-900"
+                  @click="saveUser(user.id)"
+                >
+                  Save
+                </button>
+                <button
+                  class="text-gray-600 hover:text-gray-900"
+                  @click="cancelEdit"
+                >
+                  Cancel
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
-

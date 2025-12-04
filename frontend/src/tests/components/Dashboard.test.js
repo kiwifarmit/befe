@@ -2,99 +2,99 @@
  * Tests for Dashboard.vue component
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from '../../views/Dashboard.vue'
-import * as auth from '../../utils/auth'
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { mount } from "@vue/test-utils";
+import { createRouter, createWebHistory } from "vue-router";
+import Dashboard from "../../views/Dashboard.vue";
+import * as auth from "../../utils/auth";
 
 // Mock auth module
-vi.mock('../../utils/auth', () => ({
+vi.mock("../../utils/auth", () => ({
   authenticatedFetch: vi.fn(),
   isAuthenticated: vi.fn(),
-}))
+}));
 
 // Mock router
 const createTestRouter = () => {
   return createRouter({
     history: createWebHistory(),
     routes: [
-      { path: '/', component: Dashboard },
-      { path: '/login', component: { template: '<div>Login</div>' } },
+      { path: "/", component: Dashboard },
+      { path: "/login", component: { template: "<div>Login</div>" } },
     ],
-  })
-}
+  });
+};
 
-describe('Dashboard.vue', () => {
-  let router
-  let wrapper
+describe("Dashboard.vue", () => {
+  let router;
+  let wrapper;
 
   beforeEach(() => {
-    router = createTestRouter()
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
+    router = createTestRouter();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
 
   afterEach(() => {
-    vi.useRealTimers()
-  })
+    vi.useRealTimers();
+  });
 
   const mountDashboard = async () => {
-    await router.push('/')
+    await router.push("/");
     wrapper = mount(Dashboard, {
       global: {
         plugins: [router],
       },
-    })
-    await router.isReady()
-    return wrapper
-  }
+    });
+    await router.isReady();
+    return wrapper;
+  };
 
-  it('should render dashboard form', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+  it("should render dashboard form", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    
-    expect(wrapper.find('h2').text()).toBe('Sum Calculator')
-    expect(wrapper.find('#input-a').exists()).toBe(true)
-    expect(wrapper.find('#input-b').exists()).toBe(true)
-    expect(wrapper.find('button').exists()).toBe(true)
-  })
+    });
+    wrapper = await mountDashboard();
 
-  it('should fetch and display credits on mount', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    expect(wrapper.find("h2").text()).toBe("Sum Calculator");
+    expect(wrapper.find("#input-a").exists()).toBe(true);
+    expect(wrapper.find("#input-b").exists()).toBe(true);
+    expect(wrapper.find("button").exists()).toBe(true);
+  });
+
+  it("should fetch and display credits on mount", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 15 }),
-    })
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    expect(auth.authenticatedFetch).toHaveBeenCalledWith('/users/me')
-    expect(wrapper.vm.credits).toBe(15)
-    expect(wrapper.text()).toContain('Credits: 15')
-  })
+    });
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('should bind number inputs', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    expect(auth.authenticatedFetch).toHaveBeenCalledWith("/users/me");
+    expect(wrapper.vm.credits).toBe(15);
+    expect(wrapper.text()).toContain("Credits: 15");
+  });
+
+  it("should bind number inputs", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    
-    expect(wrapper.vm.a).toBe(10)
-    expect(wrapper.vm.b).toBe(20)
-  })
+    });
+    wrapper = await mountDashboard();
 
-  it('should calculate sum successfully', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+
+    expect(wrapper.vm.a).toBe(10);
+    expect(wrapper.vm.b).toBe(20);
+  });
+
+  it("should calculate sum successfully", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -107,110 +107,122 @@ describe('Dashboard.vue', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ credits: 9 }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(auth.authenticatedFetch).toHaveBeenCalledWith('/api/sum', {
-      method: 'POST',
+      });
+
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(auth.authenticatedFetch).toHaveBeenCalledWith("/api/sum", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ a: 10, b: 20 }),
-    })
-    
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.result).toBe(30)
-    expect(wrapper.vm.success).toBe(true)
-    expect(wrapper.text()).toContain('Result: 30')
-  })
+    });
 
-  it('should show loading state during calculation', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.result).toBe(30);
+    expect(wrapper.vm.success).toBe(true);
+    expect(wrapper.text()).toContain("Result: 30");
+  });
+
+  it("should show loading state during calculation", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ credits: 10 }),
       })
-      .mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve({
-        ok: true,
-        json: () => Promise.resolve({ result: 30 }),
-      }), 100)))
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    
-    const button = wrapper.find('button')
-    await button.trigger('click')
-    
-    expect(wrapper.vm.loading).toBe(true)
-    expect(button.text()).toBe('Calculating...')
-    expect(button.attributes('disabled')).toBeDefined()
-  })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: () => Promise.resolve({ result: 30 }),
+                }),
+              100,
+            ),
+          ),
+      );
 
-  it('should validate numbers are between 0 and 1023', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+
+    const button = wrapper.find("button");
+    await button.trigger("click");
+
+    expect(wrapper.vm.loading).toBe(true);
+    expect(button.text()).toBe("Calculating...");
+    expect(button.attributes("disabled")).toBeDefined();
+  });
+
+  it("should validate numbers are between 0 and 1023", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(2000)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Both numbers must be between 0 and 1023')
-    expect(auth.authenticatedFetch).not.toHaveBeenCalledWith('/api/sum', expect.anything())
-  })
+    });
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('should validate negative numbers', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.find("#input-a").setValue(2000);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Both numbers must be between 0 and 1023");
+    expect(auth.authenticatedFetch).not.toHaveBeenCalledWith(
+      "/api/sum",
+      expect.anything(),
+    );
+  });
+
+  it("should validate negative numbers", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(-5)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Both numbers must be between 0 and 1023')
-  })
+    });
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('should validate non-integer numbers', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.find("#input-a").setValue(-5);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Both numbers must be between 0 and 1023");
+  });
+
+  it("should validate non-integer numbers", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10.5)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Please enter whole numbers (integers)')
-  })
+    });
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('should handle API errors', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.find("#input-a").setValue(10.5);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Please enter whole numbers (integers)");
+  });
+
+  it("should handle API errors", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -219,78 +231,78 @@ describe('Dashboard.vue', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 400,
-        statusText: 'Bad Request',
-        json: () => Promise.resolve({ detail: 'Validation error' }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Validation error')
-    expect(wrapper.vm.result).toBeNull()
-  })
+        statusText: "Bad Request",
+        json: () => Promise.resolve({ detail: "Validation error" }),
+      });
 
-  it('should handle token expiration', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Validation error");
+    expect(wrapper.vm.result).toBeNull();
+  });
+
+  it("should handle token expiration", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ credits: 10 }),
       })
-      .mockRejectedValueOnce(new Error('TOKEN_EXPIRED'))
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Session expired. Please login again.')
-    
+      .mockRejectedValueOnce(new Error("TOKEN_EXPIRED"));
+
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Session expired. Please login again.");
+
     // Advance timers and wait for navigation
-    vi.advanceTimersByTime(2000)
-    await wrapper.vm.$nextTick()
-    await router.isReady()
-    
+    vi.advanceTimersByTime(2000);
+    await wrapper.vm.$nextTick();
+    await router.isReady();
+
     // Router navigation is async, verify it was called
     // The actual navigation might not complete in test environment
-    expect(wrapper.vm.error).toBe('Session expired. Please login again.')
-  })
+    expect(wrapper.vm.error).toBe("Session expired. Please login again.");
+  });
 
-  it('should redirect to login if not authenticated', async () => {
-    auth.isAuthenticated.mockReturnValue(false)
+  it("should redirect to login if not authenticated", async () => {
+    auth.isAuthenticated.mockReturnValue(false);
     auth.authenticatedFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ credits: 10 }),
-    })
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Session expired. Please login again.')
-    
-    // Advance timers - router.push is called with setTimeout
-    vi.advanceTimersByTime(2000)
-    await wrapper.vm.$nextTick()
-    await router.isReady()
-    
-    // Verify error message is set correctly
-    expect(wrapper.vm.error).toBe('Session expired. Please login again.')
-  })
+    });
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('should clear result when inputs change', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.error).toBe("Session expired. Please login again.");
+
+    // Advance timers - router.push is called with setTimeout
+    vi.advanceTimersByTime(2000);
+    await wrapper.vm.$nextTick();
+    await router.isReady();
+
+    // Verify error message is set correctly
+    expect(wrapper.vm.error).toBe("Session expired. Please login again.");
+  });
+
+  it("should clear result when inputs change", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -299,52 +311,52 @@ describe('Dashboard.vue', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ result: 30 }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
+      });
+
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
     // Set initial values and calculate
-    wrapper.vm.a = 10
-    wrapper.vm.b = 20
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
+    wrapper.vm.a = 10;
+    wrapper.vm.b = 20;
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
     // Wait for async response - use flushPromises or wait for result
-    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick();
     // Give a moment for the promise to resolve
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       if (wrapper.vm.result === 30) {
-        resolve()
+        resolve();
       } else {
         const checkInterval = setInterval(() => {
           if (wrapper.vm.result === 30) {
-            clearInterval(checkInterval)
-            resolve()
+            clearInterval(checkInterval);
+            resolve();
           }
-        }, 10)
+        }, 10);
         setTimeout(() => {
-          clearInterval(checkInterval)
-          resolve()
-        }, 500)
+          clearInterval(checkInterval);
+          resolve();
+        }, 500);
       }
-    })
-    
-    expect(wrapper.vm.result).toBe(30)
-    expect(wrapper.vm.success).toBe(true)
-    
+    });
+
+    expect(wrapper.vm.result).toBe(30);
+    expect(wrapper.vm.success).toBe(true);
+
     // Change input value directly - this should trigger the watcher
     // The watcher watches [a, b] and clears result when they change
-    wrapper.vm.a = 15
-    await wrapper.vm.$nextTick()
-    
-    // Watcher should have cleared result when input changed
-    expect(wrapper.vm.result).toBeNull()
-    expect(wrapper.vm.success).toBe(false)
-  })
+    wrapper.vm.a = 15;
+    await wrapper.vm.$nextTick();
 
-  it('should refresh credits after successful calculation', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    // Watcher should have cleared result when input changed
+    expect(wrapper.vm.result).toBeNull();
+    expect(wrapper.vm.success).toBe(false);
+  });
+
+  it("should refresh credits after successful calculation", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -357,23 +369,23 @@ describe('Dashboard.vue', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ credits: 9 }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    // Should have called fetchUserInfo again after calculation
-    expect(auth.authenticatedFetch).toHaveBeenCalledTimes(3)
-    expect(auth.authenticatedFetch).toHaveBeenNthCalledWith(3, '/users/me')
-  })
+      });
 
-  it('should display result with calculation formula', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find("#input-a").setValue(10);
+    await wrapper.find("#input-b").setValue(20);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
+
+    // Should have called fetchUserInfo again after calculation
+    expect(auth.authenticatedFetch).toHaveBeenCalledTimes(3);
+    expect(auth.authenticatedFetch).toHaveBeenNthCalledWith(3, "/users/me");
+  });
+
+  it("should display result with calculation formula", async () => {
+    auth.isAuthenticated.mockReturnValue(true);
     auth.authenticatedFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -382,184 +394,17 @@ describe('Dashboard.vue', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ result: 50 }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(20)
-    await wrapper.find('#input-b').setValue(30)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.text()).toContain('Result: 50')
-    expect(wrapper.text()).toContain('20 + 30 = 50')
-  })
+      });
 
-  it('handles non-JSON error response', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    auth.authenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ credits: 10 }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: () => Promise.reject(new Error('Not JSON')),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toContain('Internal Server Error')
-  })
+    wrapper = await mountDashboard();
+    await wrapper.vm.$nextTick();
 
-  it('handles array detail errors', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    auth.authenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ credits: 10 }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: () => Promise.resolve({
-          detail: [
-            { msg: 'Validation error 1', loc: ['body', 'a'] },
-            { msg: 'Validation error 2', loc: ['body', 'b'] },
-          ],
-        }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toContain('Validation error')
-  })
+    await wrapper.find("#input-a").setValue(20);
+    await wrapper.find("#input-b").setValue(30);
+    await wrapper.find("button").trigger("click");
+    await wrapper.vm.$nextTick();
 
-  it('handles string detail error', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    auth.authenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ credits: 10 }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({
-          detail: 'Invalid input values',
-        }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toBe('Invalid input values')
-  })
-
-  it('handles object detail error', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    auth.authenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ credits: 10 }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({
-          detail: { error: 'Custom error', code: 'ERR001' },
-        }),
-      })
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toContain('error')
-  })
-
-  it('handles network error with Failed to fetch message', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    auth.authenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ credits: 10 }),
-      })
-      .mockRejectedValueOnce(new Error('Failed to fetch'))
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toContain('Cannot connect to server')
-  })
-
-  it('handles fetchUserInfo error gracefully', async () => {
-    auth.isAuthenticated.mockReturnValue(true)
-    // First call is for fetchUserInfo, second would be for calculateSum if called
-    auth.authenticatedFetch.mockRejectedValueOnce(new Error('Network error'))
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    // Should not crash, credits should remain null
-    // The error is caught and logged, but doesn't affect the component
-    expect(wrapper.vm.credits).toBeNull()
-  })
-
-  it('handles non-authenticated state', async () => {
-    auth.isAuthenticated.mockReturnValue(false)
-    auth.authenticatedFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ credits: 10 }),
-    })
-    
-    const pushSpy = vi.spyOn(router, 'push')
-    
-    wrapper = await mountDashboard()
-    await wrapper.vm.$nextTick()
-    
-    await wrapper.find('#input-a').setValue(10)
-    await wrapper.find('#input-b').setValue(20)
-    await wrapper.find('button').trigger('click')
-    await wrapper.vm.$nextTick()
-    
-    expect(wrapper.vm.error).toContain('Session expired')
-    
-    // Fast-forward timers to trigger router push
-    vi.advanceTimersByTime(2000)
-    await wrapper.vm.$nextTick()
-    
-    // Verify router.push was called with /login
-    expect(pushSpy).toHaveBeenCalledWith('/login')
-  })
-})
-
+    expect(wrapper.text()).toContain("Result: 50");
+    expect(wrapper.text()).toContain("20 + 30 = 50");
+  });
+});

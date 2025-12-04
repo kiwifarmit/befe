@@ -30,4 +30,3 @@ fi
 echo "Starting dev server..."
 # Start the dev server
 exec npm run dev -- --host
-

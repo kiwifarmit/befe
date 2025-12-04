@@ -37,7 +37,7 @@ def is_token_expired(token: str) -> bool:
         exp = decoded.get('exp')
         if not exp:
             return True
-        
+
         # Check if token expires in less than 5 minutes (300 seconds)
         current_time = int(time.time())
         time_until_expiration = exp - current_time
@@ -54,11 +54,11 @@ Catch 401 responses and re-login:
 async def make_authenticated_request(client, url, method="GET", **kwargs):
     """Make request and handle token expiration."""
     response = await client.request(method, url, **kwargs)
-    
+
     if response.status_code == 401:
         # Token expired, need to re-login
         raise TokenExpiredError("Token expired, please re-login")
-    
+
     return response
 ```
 
@@ -79,7 +79,7 @@ class WebClient:
         self.token = None
         self.username = None
         self.password = None
-    
+
     def is_token_expired(self, token: str) -> bool:
         """Check if token is expired or expiring soon."""
         try:
@@ -91,18 +91,18 @@ class WebClient:
             return (exp - current_time) < 300  # 5 minutes threshold
         except Exception:
             return True
-    
+
     async def login(self, username: str, password: str):
         """Login and store credentials for auto re-login."""
         self.username = username
         self.password = password
-        
+
         response = await self.client.post(
             "/auth/jwt/login",
             data={"username": username, "password": password},
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
-        
+
         if response.status_code == 200:
             self.token = response.json()["access_token"]
             print("Login successful")
@@ -110,7 +110,7 @@ class WebClient:
         else:
             print(f"Login failed: {response.text}")
             return False
-    
+
     async def ensure_authenticated(self):
         """Ensure we have a valid token, re-login if needed."""
         if not self.token or self.is_token_expired(self.token):
@@ -120,17 +120,17 @@ class WebClient:
             else:
                 raise Exception("Token expired and no credentials available for re-login")
         return True
-    
+
     async def get_sum(self, a: int, b: int):
         """Make authenticated request with automatic re-login."""
         await self.ensure_authenticated()
-        
+
         response = await self.client.post(
             "/api/sum",
             json={"a": a, "b": b},
             headers={"Authorization": f"Bearer {self.token}"}
         )
-        
+
         if response.status_code == 401:
             # Token expired between check and request, try once more
             await self.ensure_authenticated()
@@ -139,14 +139,14 @@ class WebClient:
                 json={"a": a, "b": b},
                 headers={"Authorization": f"Bearer {self.token}"}
             )
-        
+
         if response.status_code == 200:
             print(f"Sum result: {response.json()['result']}")
             return response.json()['result']
         else:
             print(f"Sum failed: {response.text}")
             raise Exception(f"Request failed: {response.text}")
-    
+
     async def close(self):
         await self.client.aclose()
 
@@ -154,11 +154,11 @@ class WebClient:
 async def main():
     client = WebClient()
     await client.login("admin@example.com", "Admin123")
-    
+
     # Make multiple requests - token will auto-refresh if needed
     await client.get_sum(10, 20)
     await client.get_sum(5, 15)
-    
+
     await client.close()
 
 if __name__ == "__main__":
@@ -178,35 +178,35 @@ class WebClient:
         self.token = None
         self.username = None
         self.password = None
-    
+
     async def login(self, username: str, password: str):
         """Login and store credentials."""
         self.username = username
         self.password = password
-        
+
         response = await self.client.post(
             "/auth/jwt/login",
             data={"username": username, "password": password},
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
-        
+
         if response.status_code == 200:
             self.token = response.json()["access_token"]
             return True
         return False
-    
+
     async def _make_request_with_retry(self, method: str, url: str, **kwargs):
         """Make request and retry with re-login on 401."""
         if not self.token:
             raise Exception("Not authenticated")
-        
+
         # Add auth header
         headers = kwargs.get('headers', {})
         headers['Authorization'] = f"Bearer {self.token}"
         kwargs['headers'] = headers
-        
+
         response = await self.client.request(method, url, **kwargs)
-        
+
         # If 401, try re-login and retry once
         if response.status_code == 401 and self.username and self.password:
             print("Token expired, re-authenticating...")
@@ -214,9 +214,9 @@ class WebClient:
                 headers['Authorization'] = f"Bearer {self.token}"
                 kwargs['headers'] = headers
                 response = await self.client.request(method, url, **kwargs)
-        
+
         return response
-    
+
     async def get_sum(self, a: int, b: int):
         """Make authenticated request."""
         response = await self._make_request_with_retry(
@@ -224,7 +224,7 @@ class WebClient:
             "/api/sum",
             json={"a": a, "b": b}
         )
-        
+
         if response.status_code == 200:
             return response.json()['result']
         else:
@@ -234,10 +234,10 @@ class WebClient:
 async def main():
     client = WebClient()
     await client.login("admin@example.com", "Admin123")
-    
+
     result = await client.get_sum(10, 20)
     print(f"Sum result: {result}")
-    
+
     await client.close()
 ```
 
@@ -327,5 +327,3 @@ See `client.py` in this directory for a complete example that implements automat
 - **No Refresh Tokens**: Must re-login when token expires
 - **401 Response**: Always indicates expired/invalid token
 - **Security**: Never log or expose tokens in production code
-
-

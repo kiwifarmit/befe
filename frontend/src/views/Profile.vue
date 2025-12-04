@@ -1,197 +1,247 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { authenticatedFetch, getCurrentUser } from '../utils/auth';
+import { ref, onMounted } from "vue";
+import { authenticatedFetch } from "../utils/auth";
 
-const router = useRouter();
 const user = ref(null);
 const loading = ref(true);
-const error = ref('');
-const success = ref('');
-
-// Password update form
-const currentPassword = ref('');
-const newPassword = ref('');
-const confirmPassword = ref('');
+const error = ref("");
+const currentPassword = ref("");
+const newPassword = ref("");
+const confirmPassword = ref("");
+const passwordError = ref("");
+const passwordSuccess = ref("");
 const updatingPassword = ref(false);
-const passwordError = ref('');
-const passwordSuccess = ref('');
 
-// Fetch user data
-const fetchUser = async () => {
+const fetchProfile = async () => {
   try {
     loading.value = true;
-    error.value = '';
-    const userData = await getCurrentUser();
-    if (userData) {
-      user.value = userData;
-    } else {
-      error.value = 'Failed to load user data';
-      router.push('/login');
+    error.value = "";
+    const response = await authenticatedFetch("/users/me");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch profile");
     }
+
+    user.value = await response.json();
   } catch (e) {
-    error.value = e.message || 'Failed to load user data';
-    if (e.message === 'TOKEN_EXPIRED') {
-      router.push('/login');
-    }
+    error.value = e.message || "Failed to load profile";
   } finally {
     loading.value = false;
   }
 };
 
-// Update password
 const updatePassword = async () => {
-  passwordError.value = '';
-  passwordSuccess.value = '';
-  
+  passwordError.value = "";
+  passwordSuccess.value = "";
+
   // Validation
+  if (!currentPassword.value) {
+    passwordError.value = "Current password is required";
+    return;
+  }
+
   if (!newPassword.value) {
-    passwordError.value = 'New password is required';
+    passwordError.value = "New password is required";
     return;
   }
-  
+
   if (newPassword.value.length < 8) {
-    passwordError.value = 'Password must be at least 8 characters long';
+    passwordError.value = "Password must be at least 8 characters long";
     return;
   }
-  
+
+  if (!/\d/.test(newPassword.value)) {
+    passwordError.value = "Password must contain at least one number";
+    return;
+  }
+
+  if (!/[A-Z]/.test(newPassword.value)) {
+    passwordError.value = "Password must contain at least one uppercase letter";
+    return;
+  }
+
+  if (!/[a-z]/.test(newPassword.value)) {
+    passwordError.value = "Password must contain at least one lowercase letter";
+    return;
+  }
+
   if (newPassword.value !== confirmPassword.value) {
-    passwordError.value = 'Passwords do not match';
+    passwordError.value = "Passwords do not match";
     return;
   }
-  
+
   updatingPassword.value = true;
-  
+
   try {
-    const response = await authenticatedFetch('/users/me', {
-      method: 'PATCH',
+    const response = await authenticatedFetch("/users/me/password", {
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        password: newPassword.value
+        current_password: currentPassword.value,
+        password: newPassword.value,
       }),
     });
-    
+
     if (!response.ok) {
-      const data = await response.json();
-      passwordError.value = data.detail || 'Failed to update password';
+      let errorMessage = "Failed to update password";
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          errorMessage = data.detail || data.message || errorMessage;
+        }
+      } catch (parseError) {
+        // Response is not JSON, use status text
+        errorMessage = `${response.status} ${response.statusText}`;
+      }
+      passwordError.value = errorMessage;
       return;
     }
-    
-    passwordSuccess.value = 'Password updated successfully';
-    currentPassword.value = '';
-    newPassword.value = '';
-    confirmPassword.value = '';
-    
-    // Refresh user data
-    await fetchUser();
+
+    passwordSuccess.value = "Password updated successfully";
+    currentPassword.value = "";
+    newPassword.value = "";
+    confirmPassword.value = "";
+
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      passwordSuccess.value = "";
+    }, 3000);
   } catch (e) {
-    if (e.message === 'TOKEN_EXPIRED') {
-      router.push('/login');
-    } else {
-      passwordError.value = e.message || 'Failed to update password';
-    }
+    passwordError.value = e.message || "Failed to update password";
   } finally {
     updatingPassword.value = false;
   }
 };
 
 onMounted(() => {
-  fetchUser();
+  fetchProfile();
 });
 </script>
 
 <template>
   <div class="bg-white p-8 rounded-lg shadow-md mb-4">
-    <h2 class="text-2xl font-semibold mb-4 text-gray-800">Profile</h2>
-    
-    <div v-if="loading" class="text-gray-600">Loading...</div>
-    
-    <div v-else-if="error" class="text-red-500 mb-4">{{ error }}</div>
-    
-    <div v-else-if="user" class="space-y-6">
-      <!-- User Information -->
-      <div>
-        <h3 class="text-lg font-medium text-gray-700 mb-3">User Information</h3>
-        <div class="space-y-2">
-          <div class="flex justify-between py-2 border-b border-gray-200">
-            <span class="font-medium text-gray-600">Email:</span>
-            <span class="text-gray-800">{{ user.email }}</span>
-          </div>
-          <div class="flex justify-between py-2 border-b border-gray-200">
-            <span class="font-medium text-gray-600">Credits:</span>
-            <span class="text-gray-800 font-semibold">{{ user.credits }}</span>
-          </div>
-          <div class="flex justify-between py-2 border-b border-gray-200">
-            <span class="font-medium text-gray-600">Status:</span>
-            <span class="text-gray-800">
-              <span v-if="user.is_active" class="text-green-600">Active</span>
-              <span v-else class="text-red-600">Inactive</span>
-            </span>
-          </div>
-          <div class="flex justify-between py-2 border-b border-gray-200">
-            <span class="font-medium text-gray-600">Verified:</span>
-            <span class="text-gray-800">
-              <span v-if="user.is_verified" class="text-green-600">Yes</span>
-              <span v-else class="text-yellow-600">No</span>
-            </span>
-          </div>
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800">My Profile</h2>
+
+    <div v-if="error" class="text-red-500 mb-4">
+      <strong>Error:</strong> {{ error }}
+    </div>
+
+    <div v-if="loading" class="text-gray-600">Loading profile...</div>
+
+    <div v-if="user && !loading" class="space-y-4">
+      <div class="border-b border-gray-200 pb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1"
+          >Email</label
+        >
+        <p class="text-gray-900">{{ user.email }}</p>
+      </div>
+
+      <div class="border-b border-gray-200 pb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1"
+          >Credits</label
+        >
+        <p class="text-gray-900 text-2xl font-semibold">{{ user.credits }}</p>
+      </div>
+
+      <div class="border-b border-gray-200 pb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1"
+          >Status</label
+        >
+        <div class="flex gap-4">
+          <span
+            :class="user.is_active ? 'text-green-600' : 'text-red-600'"
+            class="font-medium"
+          >
+            {{ user.is_active ? "Active" : "Inactive" }}
+          </span>
+          <span
+            :class="user.is_verified ? 'text-green-600' : 'text-yellow-600'"
+            class="font-medium"
+          >
+            {{ user.is_verified ? "Verified" : "Not Verified" }}
+          </span>
+          <span v-if="user.is_superuser" class="text-purple-600 font-medium">
+            Superuser
+          </span>
         </div>
       </div>
-      
-      <!-- Password Update Form -->
+
       <div>
-        <h3 class="text-lg font-medium text-gray-700 mb-3">Change Password</h3>
-        
-        <div v-if="passwordError" class="text-red-500 mb-4 bg-red-50 p-3 rounded">
-          {{ passwordError }}
+        <label class="block text-sm font-medium text-gray-700 mb-1"
+          >User ID</label
+        >
+        <p class="text-gray-500 text-sm font-mono">{{ user.id }}</p>
+      </div>
+
+      <!-- Password Change Section -->
+      <div class="border-t border-gray-200 pt-6 mt-6">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800">
+          Change Password
+        </h3>
+
+        <div v-if="passwordError" class="text-red-500 mb-4 text-sm">
+          <strong>Error:</strong> {{ passwordError }}
         </div>
-        
-        <div v-if="passwordSuccess" class="text-green-600 mb-4 bg-green-50 p-3 rounded">
-          {{ passwordSuccess }}
+
+        <div v-if="passwordSuccess" class="text-green-500 mb-4 text-sm">
+          <strong>Success:</strong> {{ passwordSuccess }}
         </div>
-        
-        <form @submit.prevent="updatePassword" class="space-y-4">
+
+        <div class="space-y-4">
           <div>
-            <label for="new-password" class="block mb-2 font-medium text-gray-700">New Password</label>
-            <input 
-              id="new-password"
-              v-model="newPassword" 
-              type="password" 
-              placeholder="Enter new password"
-              required
-              minlength="8"
-              class="w-full p-2 border border-gray-300 rounded"
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Current Password</label
+            >
+            <input
+              v-model="currentPassword"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter current password"
             />
-            <p class="text-sm text-gray-500 mt-1">
-              Must be at least 8 characters with uppercase, lowercase, and a number
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >New Password</label
+            >
+            <input
+              v-model="newPassword"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter new password"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Must be at least 8 characters with uppercase, lowercase, and a
+              number
             </p>
           </div>
-          
+
           <div>
-            <label for="confirm-password" class="block mb-2 font-medium text-gray-700">Confirm Password</label>
-            <input 
-              id="confirm-password"
-              v-model="confirmPassword" 
-              type="password" 
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Confirm New Password</label
+            >
+            <input
+              v-model="confirmPassword"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Confirm new password"
-              required
-              minlength="8"
-              class="w-full p-2 border border-gray-300 rounded"
             />
           </div>
-          
-          <button 
-            type="submit" 
-            :disabled="updatingPassword"
-            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded cursor-pointer border-none disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {{ updatingPassword ? 'Updating...' : 'Update Password' }}
-          </button>
-        </form>
+
+          <div>
+            <button
+              :disabled="updatingPassword"
+              class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 rounded cursor-pointer border-none"
+              @click="updatePassword"
+            >
+              {{ updatingPassword ? "Updating..." : "Update Password" }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
-

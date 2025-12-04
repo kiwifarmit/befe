@@ -1,7 +1,11 @@
 <script setup>
-import { useRouter, useRoute } from 'vue-router';
-import { ref, computed, onMounted, watch } from 'vue';
-import { isAuthenticated, logout as authLogout, getCurrentUser, isAdmin } from './utils/auth';
+import { useRouter, useRoute } from "vue-router";
+import { ref, computed, onMounted, watch } from "vue";
+import {
+  isAuthenticated,
+  logout as authLogout,
+  getCurrentUser,
+} from "./utils/auth";
 
 const router = useRouter();
 const route = useRoute();
@@ -12,14 +16,20 @@ const userIsAdmin = ref(false);
 const checkAuth = async () => {
   const authenticated = isAuthenticated();
   isLoggedIn.value = authenticated;
-  
+
   if (authenticated) {
     try {
       currentUser.value = await getCurrentUser();
-      // Only set admin status if we have a valid user
-      userIsAdmin.value = currentUser.value ? await isAdmin() : false;
+      // Check admin status directly from user object
+      // Only set to true if explicitly is_superuser is true
+      if (currentUser.value) {
+        userIsAdmin.value = currentUser.value.is_superuser === true;
+      } else {
+        userIsAdmin.value = false;
+      }
     } catch (error) {
       // If there's an error getting user, reset everything
+      console.error("Error checking auth:", error);
       currentUser.value = null;
       userIsAdmin.value = false;
     }
@@ -38,22 +48,25 @@ onMounted(() => {
 });
 
 // Watch route changes to refresh user data
-watch(() => route.path, () => {
-  if (isLoggedIn.value) {
-    checkAuth();
-  }
-});
+watch(
+  () => route.path,
+  () => {
+    if (isLoggedIn.value) {
+      checkAuth();
+    }
+  },
+);
 
 const logout = () => {
   authLogout();
   isLoggedIn.value = false;
   currentUser.value = null;
   userIsAdmin.value = false;
-  router.push('/login');
+  router.push("/login");
 };
 
 const pageTitle = computed(() => {
-  return route.meta.title || 'App';
+  return route.meta.title || "App";
 });
 
 const isActiveRoute = (path) => {
@@ -66,43 +79,46 @@ const isActiveRoute = (path) => {
     <header v-if="isLoggedIn" class="mb-8 pb-4 border-b-2 border-gray-200">
       <div class="flex justify-between items-center mb-4">
         <h1 class="m-0 text-2xl text-gray-800">{{ pageTitle }}</h1>
-        <button @click="logout" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded cursor-pointer border-none">
+        <button
+          class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded cursor-pointer border-none"
+          @click="logout"
+        >
           Logout
         </button>
       </div>
-      
+
       <!-- Navigation Menu -->
       <nav class="flex gap-4 border-b border-gray-200">
-        <router-link 
+        <router-link
+          to="/dashboard"
+          :class="[
+            'px-4 py-2 text-sm font-medium transition-colors',
+            isActiveRoute('/dashboard')
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600 hover:text-gray-900',
+          ]"
+        >
+          Dashboard
+        </router-link>
+        <router-link
           to="/profile"
           :class="[
             'px-4 py-2 text-sm font-medium transition-colors',
             isActiveRoute('/profile')
               ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+              : 'text-gray-600 hover:text-gray-900',
           ]"
         >
           Profile
         </router-link>
-        <router-link 
-          to="/sum"
-          :class="[
-            'px-4 py-2 text-sm font-medium transition-colors',
-            isActiveRoute('/sum')
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
-          ]"
-        >
-          Sum
-        </router-link>
-        <router-link 
-          v-if="isLoggedIn && userIsAdmin"
+        <router-link
+          v-if="isLoggedIn && userIsAdmin === true"
           to="/admin/users"
           :class="[
             'px-4 py-2 text-sm font-medium transition-colors',
             isActiveRoute('/admin/users')
               ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+              : 'text-gray-600 hover:text-gray-900',
           ]"
         >
           Admin Users

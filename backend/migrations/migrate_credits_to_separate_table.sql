@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS user_credits (
 -- Step 2: Migrate existing credits data from user table to user_credits table
 -- This creates a user_credits record for each existing user with their current credits value
 INSERT INTO user_credits (user_id, credits)
-SELECT id, COALESCE(credits, 10) 
+SELECT id, COALESCE(credits, 10)
 FROM "user"
 WHERE id NOT IN (SELECT user_id FROM user_credits)
 ON CONFLICT (user_id) DO NOTHING;
@@ -27,7 +27,6 @@ ON CONFLICT (user_id) DO NOTHING;
 ALTER TABLE "user" DROP COLUMN IF EXISTS credits;
 
 -- Verification queries (optional - uncomment to verify migration)
--- SELECT u.id, u.email, uc.credits 
--- FROM "user" u 
+-- SELECT u.id, u.email, uc.credits
+-- FROM "user" u
 -- LEFT JOIN user_credits uc ON u.id = uc.user_id;
-

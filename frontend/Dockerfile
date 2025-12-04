@@ -29,10 +29,11 @@ USER root
 RUN groupadd -r appuser && useradd --no-log-init -r -g appuser -d /home/appuser -s /bin/bash appuser
 RUN mkdir -p /home/appuser/app && chown -R appuser:appuser /home/appuser
 
-# Make entrypoint executable and accessible  
+# Make entrypoint executable and accessible
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /home/appuser/app
+#USER appuser
 
 # Start as root to fix volume permissions, then switch to appuser in entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]

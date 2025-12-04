@@ -25,11 +25,11 @@ from app.auth import UserManager
 async def create_user(email, password, is_superuser=False):
     # Initialize DB first to ensure tables exist
     await init_db()
-    
+
     async for session in get_async_session():
         user_db = SQLAlchemyUserDatabase(session, User)
         user_manager = UserManager(user_db)
-        
+
         try:
             user = await user_manager.create(
                 UserCreate(
@@ -40,12 +40,12 @@ async def create_user(email, password, is_superuser=False):
                     is_verified=True
                 )
             )
-            
+
             # Create UserCredits record with default 10 credits
             user_credits = UserCredits(user_id=user.id, credits=10)
             session.add(user_credits)
             await session.commit()
-            
+
             print(f"User {user.email} created successfully with ID: {user.id}")
         except UserAlreadyExists:
             print(f"User {email} already exists")

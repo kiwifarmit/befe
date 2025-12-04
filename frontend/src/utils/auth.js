@@ -3,8 +3,8 @@
  * Handles token storage, expiration checking, and automatic re-login
  */
 
-const TOKEN_KEY = 'token';
-const CREDENTIALS_KEY = 'auth_credentials'; // Store encrypted or hashed credentials if needed
+const TOKEN_KEY = "token";
+const CREDENTIALS_KEY = "auth_credentials"; // Store encrypted or hashed credentials if needed
 const TOKEN_REFRESH_THRESHOLD = 300; // Refresh token 5 minutes before expiration (in seconds)
 
 /**
@@ -14,13 +14,13 @@ const TOKEN_REFRESH_THRESHOLD = 300; // Refresh token 5 minutes before expiratio
  */
 function decodeToken(token) {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (e) {
@@ -35,14 +35,14 @@ function decodeToken(token) {
  */
 function isTokenExpiredOrExpiringSoon(token) {
   if (!token) return true;
-  
+
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-  
+
   const expirationTime = decoded.exp * 1000; // Convert to milliseconds
   const currentTime = Date.now();
   const timeUntilExpiration = (expirationTime - currentTime) / 1000; // Convert to seconds
-  
+
   return timeUntilExpiration < TOKEN_REFRESH_THRESHOLD;
 }
 
@@ -87,43 +87,32 @@ export function isAuthenticated() {
  */
 export async function login(email, password) {
   const params = new URLSearchParams();
-  params.append('username', email);
-  params.append('password', password);
+  params.append("username", email);
+  params.append("password", password);
 
-  const response = await fetch('/auth/jwt/login', {
-    method: 'POST',
+  const response = await fetch("/auth/jwt/login", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: params,
   });
 
   if (!response.ok) {
-    let errorMessage = 'Login failed';
-    try {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorMessage;
-      } else {
-        // If response is not JSON (e.g., HTML error page), get text
-        const text = await response.text();
-        errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
-      }
-    } catch (e) {
-      errorMessage = `Server error (${response.status}): ${response.statusText}`;
-    }
-    throw new Error(errorMessage);
+    const errorData = await response
+      .json()
+      .catch(() => ({ detail: "Login failed" }));
+    throw new Error(errorData.detail || "Login failed");
   }
 
   const data = await response.json();
-  
+
   if (data.access_token) {
     setToken(data.access_token);
     // Optionally store credentials for auto re-login (not recommended for production)
     // For now, we'll require manual re-login when token expires
   }
-  
+
   return data;
 }
 
@@ -135,15 +124,15 @@ export async function login(email, password) {
  */
 export async function ensureValidToken() {
   const token = getToken();
-  
+
   if (!token) {
     return null;
   }
-  
+
   if (!isTokenExpiredOrExpiringSoon(token)) {
     return token;
   }
-  
+
   // Token is expired or expiring soon
   // Since we don't have refresh tokens, we need to remove the expired token
   // and let the user re-login
@@ -159,28 +148,28 @@ export async function ensureValidToken() {
  */
 export async function authenticatedFetch(url, options = {}) {
   let token = await ensureValidToken();
-  
+
   if (!token) {
     // Token expired, need to re-login
-    throw new Error('TOKEN_EXPIRED');
+    throw new Error("TOKEN_EXPIRED");
   }
-  
+
   const headers = {
     ...options.headers,
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   };
-  
+
   let response = await fetch(url, {
     ...options,
     headers,
   });
-  
+
   // If we get 401, token might have expired between check and request
   if (response.status === 401) {
     removeToken();
-    throw new Error('TOKEN_EXPIRED');
+    throw new Error("TOKEN_EXPIRED");
   }
-  
+
   return response;
 }
 
@@ -190,7 +179,7 @@ export async function authenticatedFetch(url, options = {}) {
 export function logout() {
   removeToken();
   // Clear cached user data
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     window._cachedUser = null;
   }
 }
@@ -207,14 +196,14 @@ export async function getCurrentUser() {
   if (cachedUser && isAuthenticated()) {
     return cachedUser;
   }
-  
+
   if (!isAuthenticated()) {
     cachedUser = null;
     return null;
   }
-  
+
   try {
-    const response = await authenticatedFetch('/users/me');
+    const response = await authenticatedFetch("/users/me");
     if (response.ok) {
       const user = await response.json();
       cachedUser = user;
@@ -237,5 +226,3 @@ export async function isAdmin() {
   const user = await getCurrentUser();
   return user ? user.is_superuser === true : false;
 }
-
-
