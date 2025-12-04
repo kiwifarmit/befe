@@ -1,6 +1,6 @@
 """Test to ensure update_user_credits endpoint exists and is secure."""
 
-from app.api.endpoints import router
+from app.api.credits import router, update_user_credits
 
 
 def test_update_credits_endpoint_exists():
@@ -15,7 +15,5 @@ def test_update_credits_endpoint_exists():
 
 def test_update_credits_endpoint_function_exists():
     """Ensure the update_user_credits function exists."""
-    from app.api.endpoints import update_user_credits
-
     assert update_user_credits is not None
     assert callable(update_user_credits)
