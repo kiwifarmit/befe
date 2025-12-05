@@ -44,9 +44,9 @@
 
 
             <div class='fl pad1y space-right2'>
-                <span class="strong">76.05% </span>
+                <span class="strong">76.38% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>54/71</span>
+                <span class='fraction'>55/72</span>
             </div>
 
 
@@ -290,7 +290,8 @@
 <a name='L225'></a><a href='#L225'>225</a>
 <a name='L226'></a><a href='#L226'>226</a>
 <a name='L227'></a><a href='#L227'>227</a>
-<a name='L228'></a><a href='#L228'>228</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -392,6 +393,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -516,14 +519,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
  * Authentication service for managing JWT tokens
  * Handles token storage, expiration checking, and automatic re-login
  */
 &nbsp;
-const TOKEN_KEY = 'token';
-const CREDENTIALS_KEY = 'auth_credentials'; // Store encrypted or hashed credentials if needed
+const TOKEN_KEY = "token";
+const CREDENTIALS_KEY = "auth_credentials"; // Store encrypted or hashed credentials if needed
 const TOKEN_REFRESH_THRESHOLD = 300; // Refresh token 5 minutes before expiration (in seconds)
 &nbsp;
 /**
@@ -533,13 +535,13 @@ const TOKEN_REFRESH_THRESHOLD = 300; // Refresh token 5 minutes before expiratio
  */
 function decodeToken(token) {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       atob(base64)
-        .split('')
-        .map((c) =&gt; '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
+        .split("")
+        .map((c) =&gt; "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (e) {
@@ -554,14 +556,14 @@ function decodeToken(token) {
  */
 function isTokenExpiredOrExpiringSoon(token) {
   <span class="missing-if-branch" title="if path not taken" >I</span>if (!token) <span class="cstat-no" title="statement not covered" >return true;</span>
-
+&nbsp;
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-
+&nbsp;
   const expirationTime = decoded.exp * 1000; // Convert to milliseconds
   const currentTime = Date.now();
   const timeUntilExpiration = (expirationTime - currentTime) / 1000; // Convert to seconds
-
+&nbsp;
   return timeUntilExpiration &lt; TOKEN_REFRESH_THRESHOLD;
 }
 &nbsp;
@@ -606,30 +608,32 @@ export function isAuthenticated() {
  */
 export async function login(email, password) {
   const params = new URLSearchParams();
-  params.append('username', email);
-  params.append('password', password);
+  params.append("username", email);
+  params.append("password", password);
 &nbsp;
-  const response = await fetch('/auth/jwt/login', {
-    method: 'POST',
+  const response = await fetch("/auth/jwt/login", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body: params,
   });
 &nbsp;
   if (!response.ok) {
-    const errorData = await response.json().catch(() =&gt; ({ detail: 'Login failed' }));
-    throw new Error(errorData.detail || <span class="branch-1 cbranch-no" title="branch not covered" >'Login failed')</span>;
+    const errorData = await response
+      .json()
+      .catch(() =&gt; ({ detail: "Login failed" }));
+    throw new Error(errorData.detail || <span class="branch-1 cbranch-no" title="branch not covered" >"Login failed")</span>;
   }
 &nbsp;
   const data = await response.json();
-
+&nbsp;
   <span class="missing-if-branch" title="else path not taken" >E</span>if (data.access_token) {
     setToken(data.access_token);
     // Optionally store credentials for auto re-login (not recommended for production)
     // For now, we'll require manual re-login when token expires
   }
-
+&nbsp;
   return data;
 }
 &nbsp;
@@ -641,15 +645,15 @@ export async function login(email, password) {
  */
 export async function ensureValidToken() {
   const token = getToken();
-
+&nbsp;
   if (!token) {
     return null;
   }
-
+&nbsp;
   if (!isTokenExpiredOrExpiringSoon(token)) {
     return token;
   }
-
+&nbsp;
   // Token is expired or expiring soon
   // Since we don't have refresh tokens, we need to remove the expired token
   // and let the user re-login
@@ -665,28 +669,28 @@ export async function ensureValidToken() {
  */
 export async function authenticatedFetch(url, options = {}) {
   let token = await ensureValidToken();
-
+&nbsp;
   if (!token) {
     // Token expired, need to re-login
-    throw new Error('TOKEN_EXPIRED');
+    throw new Error("TOKEN_EXPIRED");
   }
-
+&nbsp;
   const headers = {
     ...options.headers,
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   };
-
+&nbsp;
   let response = await fetch(url, {
     ...options,
     headers,
   });
-
+&nbsp;
   // If we get 401, token might have expired between check and request
   if (response.status === 401) {
     removeToken();
-    throw new Error('TOKEN_EXPIRED');
+    throw new Error("TOKEN_EXPIRED");
   }
-
+&nbsp;
   return response;
 }
 &nbsp;
@@ -696,7 +700,7 @@ export async function authenticatedFetch(url, options = {}) {
 export function logout() {
   removeToken();
   // Clear cached user data
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (typeof window !== 'undefined') {
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (typeof window !== "undefined") {
     window._cachedUser = null;
   }
 }
@@ -713,14 +717,14 @@ export async function <span class="fstat-no" title="function not covered" >getCu
 <span class="cstat-no" title="statement not covered" >  if (cachedUser &amp;&amp; isAuthenticated()) {</span>
 <span class="cstat-no" title="statement not covered" >    return cachedUser;</span>
   }
-
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  if (!isAuthenticated()) {</span>
 <span class="cstat-no" title="statement not covered" >    cachedUser = null;</span>
 <span class="cstat-no" title="statement not covered" >    return null;</span>
   }
-
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const response = <span class="cstat-no" title="statement not covered" >await authenticatedFetch('/users/me');</span>
+    const response = <span class="cstat-no" title="statement not covered" >await authenticatedFetch("/users/me");</span>
 <span class="cstat-no" title="statement not covered" >    if (response.ok) {</span>
       const user = <span class="cstat-no" title="statement not covered" >await response.json();</span>
 <span class="cstat-no" title="statement not covered" >      cachedUser = user;</span>
@@ -743,7 +747,6 @@ export async function <span class="fstat-no" title="function not covered" >isAdm
   const user = <span class="cstat-no" title="statement not covered" >await getCurrentUser();</span>
 <span class="cstat-no" title="statement not covered" >  return user ? user.is_superuser === true : false;</span>
 }
-&nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -751,7 +754,7 @@ export async function <span class="fstat-no" title="function not covered" >isAdm
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-04T17:33:04.615Z
+                at 2025-12-05T10:14:06.510Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

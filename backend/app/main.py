@@ -1,4 +1,5 @@
 import logging
+import uuid
 from contextlib import asynccontextmanager
 
 import jwt
@@ -18,9 +19,11 @@ from app.auth import (
     UserManager,
     auth_backend,
     current_active_user,
+    current_superuser,
     fastapi_users,
     get_user_manager,
 )
+from app.config import get_default_user_credits
 from app.db import get_async_session, init_db
 from app.logging_config import setup_logging
 from app.models import User, UserCreate, UserCredits, UserRead, UserUpdate
@@ -149,7 +152,8 @@ async def get_current_user_with_credits(
 
     # If UserCredits doesn't exist, create it with default (don't commit, let dependency handle it)
     if user_credits is None:
-        user_credits = UserCredits(user_id=user_id, credits=10)
+        default_credits = get_default_user_credits()
+        user_credits = UserCredits(user_id=user_id, credits=default_credits)
         session.add(user_credits)
         await session.flush()  # Use flush instead of commit to avoid session conflicts
         await session.refresh(user_credits)
@@ -269,11 +273,149 @@ async def change_password(
         )
 
 
-app.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
-    prefix="/users",
-    tags=["users"],
-)
+# Block PATCH /users/me - users should use /users/me/password for password changes
+@app.patch("/users/me", tags=["users"])
+async def patch_current_user_blocked(
+    user: User = Depends(current_active_user),
+):
+    """PATCH /users/me is blocked. Use /users/me/password to change your password."""
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="PATCH /users/me is not allowed. Use /users/me/password to change your password.",
+    )
+
+
+# Secure user CRUD endpoints - only superusers can access
+@app.get("/users/{user_id}", response_model=UserRead, tags=["users"])
+async def get_user_by_id(
+    user_id: uuid.UUID,
+    current_user: User = Depends(current_superuser),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get user by ID. Only superusers can access this endpoint."""
+    # Query the user
+    result = await session.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Load user credits
+    credits_result = await session.execute(
+        select(UserCredits).where(UserCredits.user_id == user_id)
+    )
+    user_credits = credits_result.scalar_one_or_none()
+    credits_value = user_credits.credits if user_credits else 0
+
+    return UserRead.model_validate(
+        {
+            "id": target_user.id,
+            "email": target_user.email,
+            "is_active": target_user.is_active,
+            "is_superuser": target_user.is_superuser,
+            "is_verified": target_user.is_verified,
+            "credits": credits_value,
+        }
+    )
+
+
+@app.patch("/users/{user_id}", response_model=UserRead, tags=["users"])
+async def update_user_by_id(
+    user_id: uuid.UUID,
+    user_update: UserUpdate,
+    current_user: User = Depends(current_superuser),
+    user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Update user by ID. Only superusers can update other users."""
+    # Query the user
+    result = await session.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Update user fields
+    update_data = user_update.model_dump(exclude_unset=True)
+
+    # Validate password if provided
+    if "password" in update_data:
+        await user_manager.validate_password(update_data["password"], target_user)
+        from fastapi_users.password import PasswordHelper
+
+        password_helper = PasswordHelper()
+        target_user.hashed_password = password_helper.hash(update_data["password"])
+        del update_data["password"]
+
+    # Update other fields
+    for field, value in update_data.items():
+        if hasattr(target_user, field):
+            setattr(target_user, field, value)
+
+    session.add(target_user)
+    await session.commit()
+    await session.refresh(target_user)
+
+    # Load user credits for response
+    credits_result = await session.execute(
+        select(UserCredits).where(UserCredits.user_id == user_id)
+    )
+    user_credits = credits_result.scalar_one_or_none()
+    credits_value = user_credits.credits if user_credits else 0
+
+    return UserRead.model_validate(
+        {
+            "id": target_user.id,
+            "email": target_user.email,
+            "is_active": target_user.is_active,
+            "is_superuser": target_user.is_superuser,
+            "is_verified": target_user.is_verified,
+            "credits": credits_value,
+        }
+    )
+
+
+@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["users"])
+async def delete_user_by_id(
+    user_id: uuid.UUID,
+    current_user: User = Depends(current_superuser),
+    user_manager: UserManager = Depends(get_user_manager),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Delete user by ID. Only superusers can delete users."""
+    # Query the user
+    result = await session.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Prevent self-deletion
+    if target_user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account",
+        )
+
+    # Delete UserCredits first to avoid foreign key constraint issues
+    from sqlalchemy import delete
+
+    await session.execute(delete(UserCredits).where(UserCredits.user_id == user_id))
+    await session.flush()
+
+    # Delete user (this will cascade to UserCredits if foreign key is set up)
+    await user_manager.delete(target_user)
+    await session.commit()
+
 
 # Business Logic Routes
 app.include_router(endpoints.router, prefix="/api", tags=["logic"])

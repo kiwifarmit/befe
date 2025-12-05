@@ -17,6 +17,7 @@ for path in ['/app', '/home/appuser/app']:
 
 from app.db import get_async_session, init_db
 from app.models import UserCreate, UserCredits
+from app.config import get_default_user_credits
 from fastapi_users.exceptions import UserAlreadyExists
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from app.models import User
@@ -41,10 +42,16 @@ async def create_user(email, password, is_superuser=False):
                 )
             )
 
-            # Create UserCredits record with default 10 credits
-            user_credits = UserCredits(user_id=user.id, credits=10)
+            # Create UserCredits record with default credits from environment variable
+            default_credits = get_default_user_credits()
+            # Debug: show what env var value was read
+            env_value = os.getenv("DEFAULT_USER_CREDITS", "not set")
+            print(f"DEBUG: DEFAULT_USER_CREDITS env var = '{env_value}'")
+            print(f"DEBUG: Using default credits = {default_credits}")
+            user_credits = UserCredits(user_id=user.id, credits=default_credits)
             session.add(user_credits)
             await session.commit()
+            print(f"User credits initialized with {default_credits} credits (from DEFAULT_USER_CREDITS)")
 
             print(f"User {user.email} created successfully with ID: {user.id}")
         except UserAlreadyExists:

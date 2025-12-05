@@ -36,6 +36,8 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      # User Credits
+      - DEFAULT_USER_CREDITS=${DEFAULT_USER_CREDITS:-10}
     depends_on:
       db:
         condition: service_healthy

@@ -169,3 +169,6 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 )
 
 current_active_user = fastapi_users.current_user(active=True)
+
+# Security dependency: requires superuser
+current_superuser = fastapi_users.current_user(active=True, superuser=True)

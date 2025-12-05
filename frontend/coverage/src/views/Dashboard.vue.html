@@ -44,9 +44,9 @@
 
 
             <div class='fl pad1y space-right2'>
-                <span class="strong">88.6% </span>
+                <span class="strong">87.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>70/79</span>
+                <span class='fraction'>70/80</span>
             </div>
 
 
@@ -254,7 +254,24 @@
 <a name='L189'></a><a href='#L189'>189</a>
 <a name='L190'></a><a href='#L190'>190</a>
 <a name='L191'></a><a href='#L191'>191</a>
-<a name='L192'></a><a href='#L192'>192</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -347,6 +364,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -365,7 +384,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -374,6 +392,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -402,8 +421,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -420,7 +449,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -446,15 +480,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">&lt;script setup&gt;
-import { ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { authenticatedFetch, isAuthenticated } from '../utils/auth';
+import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { authenticatedFetch, isAuthenticated } from "../utils/auth";
 &nbsp;
 const router = useRouter();
 const a = ref(0);
 const b = ref(0);
 const result = ref(null);
-const error = ref('');
+const error = ref("");
 const loading = ref(false);
 const success = ref(false);
 &nbsp;
@@ -463,7 +497,7 @@ watch([a, b], () =&gt; {
   if (result.value !== null) {
     result.value = null;
     success.value = false;
-    error.value = '';
+    error.value = "";
   }
 });
 &nbsp;
@@ -472,13 +506,13 @@ const credits = ref(null);
 // Fetch user info (including credits)
 const fetchUserInfo = async () =&gt; {
   try {
-    const response = await authenticatedFetch('/users/me');
+    const response = await authenticatedFetch("/users/me");
     <span class="missing-if-branch" title="else path not taken" >E</span>if (response.ok) {
       const data = await response.json();
       credits.value = data.credits;
     }
   } catch (e) {
-<span class="cstat-no" title="statement not covered" >    console.error('Failed to fetch user info:', e);</span>
+<span class="cstat-no" title="statement not covered" >    console.error("Failed to fetch user info:", e);</span>
   }
 };
 &nbsp;
@@ -487,45 +521,45 @@ fetchUserInfo();
 &nbsp;
 const calculateSum = async () =&gt; {
   // Reset states
-  error.value = '';
+  error.value = "";
   success.value = false;
   result.value = null;
-
+&nbsp;
   // Validate inputs - check for NaN, null, undefined, and type
   const numA = Number(a.value);
   const numB = Number(b.value);
-
+&nbsp;
   <span class="missing-if-branch" title="if path not taken" >I</span>if (isNaN(numA) || isNaN(numB)) {
-<span class="cstat-no" title="statement not covered" >    error.value = 'Please enter valid numbers';</span>
+<span class="cstat-no" title="statement not covered" >    error.value = "Please enter valid numbers";</span>
 <span class="cstat-no" title="statement not covered" >    return;</span>
   }
-
+&nbsp;
   if (!Number.isInteger(numA) || !Number.isInteger(numB)) {
-    error.value = 'Please enter whole numbers (integers)';
+    error.value = "Please enter whole numbers (integers)";
     return;
   }
-
+&nbsp;
   if (numA &lt; 0 || numA &gt; 1023 || numB &lt; 0 || numB &gt; 1023) {
-    error.value = 'Both numbers must be between 0 and 1023';
+    error.value = "Both numbers must be between 0 and 1023";
     return;
   }
-
+&nbsp;
   // Check authentication before making request
   if (!isAuthenticated()) {
-    error.value = 'Session expired. Please login again.';
+    error.value = "Session expired. Please login again.";
     setTimeout(() =&gt; {
-      router.push('/login');
+      router.push("/login");
     }, 2000);
     return;
   }
-
+&nbsp;
   loading.value = true;
-
+&nbsp;
   try {
-    const response = await authenticatedFetch('/api/sum', {
-      method: 'POST',
+    const response = await authenticatedFetch("/api/sum", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ a: a.value, b: b.value }),
     });
@@ -536,9 +570,11 @@ const calculateSum = async () =&gt; {
         const data = await response.json();
         // Handle Pydantic validation errors (detail is an array)
         <span class="missing-if-branch" title="if path not taken" >I</span>if (Array.isArray(data.detail)) {
-          const errors = <span class="cstat-no" title="statement not covered" >data.detail.map(<span class="fstat-no" title="function not covered" >err </span>=&gt; <span class="cstat-no" title="statement not covered" >err.msg || err.message || JSON.stringify(err))</span>.join(', ');</span>
+          const errors = <span class="cstat-no" title="statement not covered" >data.detail</span>
+            .map(<span class="fstat-no" title="function not covered" >(e</span>rr) =&gt; <span class="cstat-no" title="statement not covered" >err.msg || err.message || JSON.stringify(err))</span>
+            .join(", ");
 <span class="cstat-no" title="statement not covered" >          errorMessage = errors;</span>
-        } else if (typeof data.detail === 'string') {
+        } else if (typeof data.detail === "string") {
           errorMessage = data.detail;
         } else <span class="cstat-no" title="statement not covered" ><span class="missing-if-branch" title="else path not taken" >E</span>if (data.detail) {</span>
 <span class="cstat-no" title="statement not covered" >          errorMessage = JSON.stringify(data.detail);</span>
@@ -553,18 +589,18 @@ const calculateSum = async () =&gt; {
     const data = await response.json();
     result.value = data.result;
     success.value = true;
-
+&nbsp;
     // Refresh credits after successful calculation
     await fetchUserInfo();
-
   } catch (e) {
-    if (e.message === 'TOKEN_EXPIRED') {
-      error.value = 'Session expired. Please login again.';
+    if (e.message === "TOKEN_EXPIRED") {
+      error.value = "Session expired. Please login again.";
       setTimeout(() =&gt; {
-        router.push('/login');
+        router.push("/login");
       }, 2000);
-    } else <span class="missing-if-branch" title="if path not taken" >I</span>if (e.message.includes('Failed to fetch')) {
-<span class="cstat-no" title="statement not covered" >      error.value = 'Cannot connect to server. Please check if the backend is running.';</span>
+    } else <span class="missing-if-branch" title="if path not taken" >I</span>if (e.message.includes("Failed to fetch")) {
+<span class="cstat-no" title="statement not covered" >      error.value =</span>
+        "Cannot connect to server. Please check if the backend is running.";
     } else {
       error.value = e.message;
     }
@@ -579,23 +615,33 @@ const calculateSum = async () =&gt; {
   &lt;div class="bg-white p-8 rounded-lg shadow-md mb-4"&gt;
     &lt;h2 class="text-2xl font-semibold mb-4 text-gray-800"&gt;Sum Calculator&lt;/h2&gt;
     &lt;div class="flex justify-between items-center mb-4"&gt;
-      &lt;p class="text-gray-600 m-0"&gt;Calculate the sum of two integers (0-1023)&lt;/p&gt;
-      &lt;div v-if="credits !== null" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-medium text-sm"&gt;
+      &lt;p class="text-gray-600 m-0"&gt;
+        Calculate the sum of two integers (0-1023)
+      &lt;/p&gt;
+      &lt;div
+        v-if="credits !== null"
+        class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-medium text-sm"
+      &gt;
         Credits: {{ credits }}
       &lt;/div&gt;
     &lt;/div&gt;
-
+&nbsp;
     &lt;div v-if="error" class="text-red-500 mb-4"&gt;
       &lt;strong&gt;Error:&lt;/strong&gt; {{ error }}
     &lt;/div&gt;
-
-    &lt;div v-if="success &amp;&amp; result !== null" class="text-green-600 bg-green-100 p-3 rounded mb-4 border-l-4 border-green-600"&gt;
+&nbsp;
+    &lt;div
+      v-if="success &amp;&amp; result !== null"
+      class="text-green-600 bg-green-100 p-3 rounded mb-4 border-l-4 border-green-600"
+    &gt;
       &lt;strong&gt;Success!&lt;/strong&gt; Calculation completed.
     &lt;/div&gt;
-
+&nbsp;
     &lt;div class="flex gap-4 mb-4"&gt;
       &lt;div class="flex-1"&gt;
-        &lt;label for="input-a" class="block mb-2 font-medium text-gray-700"&gt;Number A&lt;/label&gt;
+        &lt;label for="input-a" class="block mb-2 font-medium text-gray-700"
+          &gt;Number A&lt;/label
+        &gt;
         &lt;input
           id="input-a"
           v-model.number="a"
@@ -608,7 +654,9 @@ const calculateSum = async () =&gt; {
         /&gt;
       &lt;/div&gt;
       &lt;div class="flex-1"&gt;
-        &lt;label for="input-b" class="block mb-2 font-medium text-gray-700"&gt;Number B&lt;/label&gt;
+        &lt;label for="input-b" class="block mb-2 font-medium text-gray-700"
+          &gt;Number B&lt;/label
+        &gt;
         &lt;input
           id="input-b"
           v-model.number="b"
@@ -621,16 +669,19 @@ const calculateSum = async () =&gt; {
         /&gt;
       &lt;/div&gt;
     &lt;/div&gt;
-
+&nbsp;
     &lt;button
-      @click="calculateSum"
       :disabled="loading"
       class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded cursor-pointer border-none w-full disabled:opacity-60 disabled:cursor-not-allowed"
+      @click="calculateSum"
     &gt;
-      {{ loading ? 'Calculating...' : 'Calculate Sum' }}
+      {{ loading ? "Calculating..." : "Calculate Sum" }}
     &lt;/button&gt;
-
-    &lt;div v-if="result !== null" class="mt-6 p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg text-white text-center"&gt;
+&nbsp;
+    &lt;div
+      v-if="result !== null"
+      class="mt-6 p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg text-white text-center"
+    &gt;
       &lt;h3 class="m-0 mb-2 text-3xl"&gt;Result: {{ result }}&lt;/h3&gt;
       &lt;p class="m-0 opacity-90 text-lg"&gt;{{ a }} + {{ b }} = {{ result }}&lt;/p&gt;
     &lt;/div&gt;
@@ -643,7 +694,7 @@ const calculateSum = async () =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-04T17:33:04.615Z
+                at 2025-12-05T10:14:06.510Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

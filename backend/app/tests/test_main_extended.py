@@ -99,7 +99,11 @@ async def test_users_me_endpoint_creates_credits(client: AsyncClient):
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "test@example.com"
-        assert data["credits"] == 10  # Default credits
+        # Credits should match DEFAULT_USER_CREDITS env var (defaults to 10 if not set)
+        from app.config import get_default_user_credits
+
+        expected_credits = get_default_user_credits()
+        assert data["credits"] == expected_credits
         # Verify UserCredits was created
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()

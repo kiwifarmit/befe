@@ -110,6 +110,21 @@ To enable password reset functionality, configure SMTP settings in `.env`:
 
 > **Note**: If SMTP is not configured, the reset token will be logged to `logs/backend.log` for testing.
 
+## Configuration
+
+### Default User Credits
+
+You can configure the default number of credits assigned to new users via the `DEFAULT_USER_CREDITS` environment variable.
+
+Add to your `.env` file:
+```env
+DEFAULT_USER_CREDITS=10
+```
+
+- **Default value**: `10` (if not set)
+- **Usage**: This value is used when creating UserCredits for new users
+- **Note**: The database default is also 10, but the application will use the environment variable value when creating credits programmatically
+
 ## Database Access
 
 PostgreSQL is exposed on port `5432` for development. Connect using:

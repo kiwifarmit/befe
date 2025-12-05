@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_default_user_credits
 from app.models import User, UserCredits
 
 
@@ -18,9 +19,10 @@ async def perform_sum_with_credits(
     )
     user_credits = result.scalar_one_or_none()
 
-    # If UserCredits doesn't exist, create it with default 10 credits
+    # If UserCredits doesn't exist, create it with default credits
     if user_credits is None:
-        user_credits = UserCredits(user_id=user.id, credits=10)
+        default_credits = get_default_user_credits()
+        user_credits = UserCredits(user_id=user.id, credits=default_credits)
         session.add(user_credits)
         await session.flush()
 

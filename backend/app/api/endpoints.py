@@ -25,5 +25,14 @@ async def sum_numbers(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    """
+    Calculate sum of two numbers. Requires authentication and sufficient credits.
+
+    Security checks:
+    - Authentication required (via current_active_user dependency)
+    - Input validation: a and b must be between 0 and 1023 (enforced by Pydantic)
+    - Business logic: User must have at least 1 credit (checked in perform_sum_with_credits)
+    - Credits are deducted after successful operation
+    """
     result = await perform_sum_with_credits(user, data.a, data.b, session)
     return {"result": result}

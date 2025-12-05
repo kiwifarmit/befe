@@ -7,6 +7,7 @@ const router = useRouter();
 const users = ref([]);
 const loading = ref(true);
 const error = ref("");
+const success = ref("");
 const editingUser = ref(null);
 const creatingUser = ref(false);
 const isAdmin = ref(false);
@@ -225,6 +226,7 @@ const deleteUser = async (userId) => {
 
   try {
     error.value = "";
+    success.value = "";
     const response = await authenticatedFetch(`/users/${userId}`, {
       method: "DELETE",
     });
@@ -244,9 +246,20 @@ const deleteUser = async (userId) => {
       throw new Error(errorMessage);
     }
 
+    // Show success message
+    const deletedUser = users.value.find((u) => u.id === userId);
+    success.value = `User ${deletedUser?.email || "deleted"} has been successfully deleted.`;
+
+    // Refresh the user list
     await fetchUsers();
+
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      success.value = "";
+    }, 3000);
   } catch (e) {
     error.value = e.message || "Failed to delete user";
+    success.value = "";
   }
 };
 
@@ -295,8 +308,17 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="error" class="text-red-500 mb-4">
+    <div
+      v-if="error"
+      class="text-red-500 mb-4 p-3 bg-red-50 border border-red-200 rounded"
+    >
       <strong>Error:</strong> {{ error }}
+    </div>
+    <div
+      v-if="success"
+      class="text-green-600 mb-4 p-3 bg-green-50 border border-green-200 rounded"
+    >
+      <strong>Success:</strong> {{ success }}
     </div>
 
     <!-- New User Form -->
